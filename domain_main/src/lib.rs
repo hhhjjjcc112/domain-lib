@@ -11,7 +11,7 @@ pub fn domain_main(
     quote! (
         #[global_allocator]
         static HEAP_ALLOCATOR: malloc::HeapAllocator =  malloc::HeapAllocator::new(corelib::alloc_raw_pages);
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         #item
         #panic
     )

@@ -56,9 +56,9 @@ where
             None => panic!("Shared heap allocation failed"),
         };
         let value_pointer = allocation.value_pointer as *mut T;
-        *allocation.domain_id_pointer = crate::domain_id();
+        unsafe { *allocation.domain_id_pointer = crate::domain_id() };
         if init {
-            core::ptr::write(value_pointer, value);
+            unsafe { core::ptr::write(value_pointer, value) };
         }
         DBox {
             domain_id_pointer: allocation.domain_id_pointer,

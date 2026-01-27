@@ -85,7 +85,7 @@ impl SharedHeapAllocator {
         type_id: TypeId,
         drop_fn: fn(TypeId, *mut u8),
     ) -> Option<(*mut u8, SharedHeapAllocation)> {
-        let ptr = alloc(layout);
+        let ptr = unsafe { alloc(layout) };
         if ptr.is_null() {
             panic!("<SharedHeap> alloc layout: {:?} failed", layout);
         }
@@ -94,7 +94,7 @@ impl SharedHeapAllocator {
         //     layout.size(),
         //     ptr as usize
         // );
-        let domain_id_pointer = alloc(Layout::for_value(&0u64)) as *mut u64;
+        let domain_id_pointer = unsafe { alloc(Layout::for_value(&0u64)) } as *mut u64;
         let res = SharedHeapAllocation {
             value_pointer: ptr,
             domain_id_pointer,
@@ -114,7 +114,7 @@ impl SharedHeapAlloc for SharedHeapAllocator {
         drop_fn: fn(TypeId, *mut u8),
     ) -> Option<SharedHeapAllocation> {
         if layout.size() > FRAME_SIZE {
-            let (ptr, res) = SharedHeapAllocator::alloc_from_heap(layout, type_id, drop_fn)?;
+            let (ptr, res) = unsafe { SharedHeapAllocator::alloc_from_heap(layout, type_id, drop_fn) }?;
             let mut shared_heap = SHARED_HEAP.lock();
             shared_heap.insert(ptr as usize, res);
             return Some(res);
@@ -124,7 +124,7 @@ impl SharedHeapAlloc for SharedHeapAllocator {
         let (ptr, res) = if let Some((ptr, res)) = res {
             (ptr, res)
         } else {
-            SharedHeapAllocator::alloc_from_heap(layout, type_id, drop_fn)?
+            (unsafe { SharedHeapAllocator::alloc_from_heap(layout, type_id, drop_fn) })?
         };
         shared_heap.insert(ptr as usize, res);
         Some(res)
@@ -138,11 +138,13 @@ impl SharedHeapAlloc for SharedHeapAllocator {
             // log::error!("<SharedHeap> dealloc: {:p}", ptr);
             assert_eq!(allocation.value_pointer, ptr);
             if allocation.layout.size() > FRAME_SIZE {
-                dealloc(allocation.value_pointer, allocation.layout);
-                dealloc(
-                    allocation.domain_id_pointer as *mut u8,
-                    Layout::for_value(&0u64),
-                );
+                unsafe { 
+                    dealloc(allocation.value_pointer, allocation.layout);
+                    dealloc(
+                        allocation.domain_id_pointer as *mut u8,
+                        Layout::for_value(&0u64),
+                    )
+                };
             } else {
                 let part = SharedHeapAllocationPart {
                     value_pointer: allocation.value_pointer,

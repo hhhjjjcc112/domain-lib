@@ -114,11 +114,11 @@ pub struct DomainDataHeap;
 
 unsafe impl GlobalAlloc for DomainDataHeap {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        alloc::alloc::alloc(layout)
+        unsafe { alloc::alloc::alloc(layout) }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        alloc::alloc::dealloc(ptr, layout)
+        unsafe { alloc::alloc::dealloc(ptr, layout) }
     }
 }
 
@@ -126,7 +126,7 @@ impl DomainDataHeap {
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed {

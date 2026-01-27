@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(trait_upcasting)]
 mod block;
 mod buf_input;
 mod buf_uart;

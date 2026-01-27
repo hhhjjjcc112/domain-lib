@@ -27,13 +27,13 @@ impl SafePtr {
     ///
     /// The caller must ensure that the pointer is valid.
     pub unsafe fn as_ref<T>(&self) -> &T {
-        &*(self.0 as *const T)
+        unsafe { &*(self.0 as *const T) }
     }
 
     /// # Safety
     ///
     /// The caller must ensure that the pointer is valid.
     pub unsafe fn as_mut<T>(&self) -> &mut T {
-        &mut *(self.0 as *mut T)
+        unsafe { &mut *(self.0 as *mut T) }
     }
 }

@@ -43,7 +43,7 @@ unsafe impl Allocator for CustomStorge {
             layout
         );
         let alloc = *DATA_ALLOCATOR.get().unwrap();
-        alloc.deallocate(ptr, layout)
+        unsafe { alloc.deallocate(ptr, layout) }
     }
 }
 
@@ -143,7 +143,7 @@ mod __private {
                 let value = value.downcast_unchecked::<T>();
                 let value = if strong_count != 2 {
                     // decrement strong count to 2
-                    let raw = Arc::into_raw(value);
+                    let (raw, _) = Arc::into_raw_with_allocator(value);
                     for _ in 0..(strong_count - 2) {
                         Arc::decrement_strong_count_in(raw, CustomStorge);
                     }

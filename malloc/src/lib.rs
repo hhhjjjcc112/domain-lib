@@ -20,7 +20,7 @@ impl HeapAllocator {
 
 unsafe impl GlobalAlloc for HeapAllocator {
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
-        let ptr = self.allocator.alloc(layout);
+        let ptr = unsafe { self.allocator.alloc(layout) };
         if ptr.is_null() {
             let need_pages = (layout.size() + 4096 - 1) / 4096;
             let need_pages = (need_pages * 2).next_power_of_two();
@@ -28,10 +28,12 @@ unsafe impl GlobalAlloc for HeapAllocator {
             let f = self.alloc_pages;
             let new_pages = f(need_pages, domain_id());
             assert!(!new_pages.is_null());
-            self.allocator
+            unsafe {
+                self.allocator
                 .lock()
                 .add_to_heap(new_pages as usize, need_pages * 4096 + new_pages as usize);
-            let ptr = self.allocator.alloc(layout);
+            }
+            let ptr = unsafe { self.allocator.alloc(layout) };
             assert!(
                 !ptr.is_null(),
                 "need pages: {}, layout:{:#x?}",
@@ -44,6 +46,6 @@ unsafe impl GlobalAlloc for HeapAllocator {
         }
     }
     unsafe fn dealloc(&self, ptr: *mut u8, layout: core::alloc::Layout) {
-        self.allocator.dealloc(ptr, layout);
+        unsafe { self.allocator.dealloc(ptr, layout) };
     }
 }

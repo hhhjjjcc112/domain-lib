@@ -50,9 +50,9 @@ pub fn unwind_from_panic() {
 
 use getrandom::Error;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe extern "Rust" fn __getrandom_v03_custom(dest: *mut u8, len: usize) -> Result<(), Error> {
-    let buf = core::slice::from_raw_parts_mut(dest, len);
+    let buf = unsafe { core::slice::from_raw_parts_mut(dest, len) };
 
     let mut count = 0;
     while count < len {

@@ -50,7 +50,7 @@ where
 
 fn yield_now() {}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn register_cont() {}
 
 fn main() {

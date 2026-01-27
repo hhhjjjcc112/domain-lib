@@ -122,15 +122,15 @@ mod core_impl {
 
     static CORE_FUNC: Once<&'static dyn CoreFunction> = Once::new();
 
-    extern "C" {
+    unsafe extern "C" {
         fn sbss();
         fn ebss();
     }
     fn clear_bss() {
         unsafe {
             core::slice::from_raw_parts_mut(
-                sbss as usize as *mut u8,
-                ebss as usize - sbss as usize,
+                sbss as *const () as *mut u8,
+                ebss as *const () as usize - sbss as *const () as usize,
             )
             .fill(0);
         }
