@@ -4,7 +4,7 @@ use core::{
     ops::Deref,
 };
 
-use arch::{hart_id, interrupt_disable, interrupt_enable, is_interrupt_enable};
+use arch::{cpu_id, interrupt_disable, interrupt_enable, is_interrupt_enable};
 use config::CPU_NUM;
 use kernel_sync::{EmptyLockAction, LockAction, TicketMutexGuard};
 
@@ -56,7 +56,7 @@ const DEFAULT_CPU: SafeRefCell<Cpu> = SafeRefCell::new(Cpu::new());
 static CPUS: [SafeRefCell<Cpu>; CPU_NUM] = [DEFAULT_CPU; CPU_NUM];
 
 fn mycpu() -> RefMut<'static, Cpu> {
-    CPUS[hart_id()].0.borrow_mut()
+    CPUS[cpu_id()].0.borrow_mut()
 }
 
 pub(crate) fn push_off() {

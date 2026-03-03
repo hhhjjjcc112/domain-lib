@@ -1,18 +1,32 @@
+//! Task metadata definitions
+//!
+//! Architecture-independent task context and metadata structures.
+
 #![no_std]
 
 mod continuation;
 
+// Compile-time check: ensure valid architecture
+#[cfg(not(any(target_arch = "riscv64", target_arch = "x86_64")))]
+compile_error!("Unsupported architecture! Only riscv64 and x86_64 are supported.");
+
+// ============================================================================
+// RISC-V TaskContext
+// ============================================================================
+
+#[cfg(target_arch = "riscv64")]
 #[derive(Debug, Clone, Copy, Default)]
 #[repr(C)]
 pub struct TaskContext {
-    /// ra
+    /// Return address (ra)
     ra: usize,
-    /// sp
+    /// Stack pointer (sp)
     sp: usize,
-    /// s0 ~ s11
+    /// Callee-saved registers s0-s11
     s: [usize; 12],
 }
 
+#[cfg(target_arch = "riscv64")]
 impl TaskContext {
     pub const fn new(ra: usize, sp: usize) -> Self {
         Self { ra, sp, s: [0; 12] }
@@ -25,8 +39,63 @@ impl TaskContext {
             s: [0; 12],
         }
     }
+
     pub fn set_sp(&mut self, sp: usize) {
         self.sp = sp;
+    }
+}
+
+// ============================================================================
+// x86-64 TaskContext
+// ============================================================================
+
+#[cfg(target_arch = "x86_64")]
+#[derive(Debug, Clone, Copy, Default)]
+#[repr(C)]
+pub struct TaskContext {
+    /// Return address (rip after ret)
+    rip: usize,
+    /// Stack pointer (rsp)
+    rsp: usize,
+    /// Callee-saved registers: rbx, rbp, r12-r15
+    rbx: usize,
+    rbp: usize,
+    r12: usize,
+    r13: usize,
+    r14: usize,
+    r15: usize,
+}
+
+#[cfg(target_arch = "x86_64")]
+impl TaskContext {
+    pub const fn new(rip: usize, rsp: usize) -> Self {
+        Self {
+            rip,
+            rsp,
+            rbx: 0,
+            rbp: 0,
+            r12: 0,
+            r13: 0,
+            r14: 0,
+            r15: 0,
+        }
+    }
+
+    pub const fn empty() -> Self {
+        Self {
+            rip: 0,
+            rsp: 0,
+            rbx: 0,
+            rbp: 0,
+            r12: 0,
+            r13: 0,
+            r14: 0,
+            r15: 0,
+        }
+    }
+
+    pub fn set_sp(&mut self, sp: usize) {
+        self.rsp = sp;
     }
 }
 

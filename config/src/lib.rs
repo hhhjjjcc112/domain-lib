@@ -1,15 +1,23 @@
 //! 配置文件
 #![no_std]
 
-#[cfg(qemu_riscv)]
+#[cfg(plat_qemu_riscv)]
 mod qemu_riscv;
-#[cfg(vf2)]
+#[cfg(plat_vf2)]
 mod vf2;
+#[cfg(plat_qemu_x86_64)]
+mod qemu_x86_64;
 
-#[cfg(qemu_riscv)]
+#[cfg(plat_qemu_riscv)]
 pub use qemu_riscv::*;
-#[cfg(vf2)]
+#[cfg(plat_vf2)]
 pub use vf2::*;
+#[cfg(plat_qemu_x86_64)]
+pub use qemu_x86_64::*;
+
+// Compile-time check: ensure exactly one platform is selected
+#[cfg(not(any(plat_qemu_riscv, plat_vf2, plat_qemu_x86_64)))]
+compile_error!("No valid platform selected! Use --cfg plat_qemu_riscv, --cfg plat_vf2, or --cfg plat_qemu_x86_64");
 
 /// Alien os的标志
 pub const ALIEN_FLAG: &str = r"
