@@ -1,6 +1,26 @@
 //! 配置文件
 #![no_std]
 
+// Two-layer cfg guards: architecture + platform.
+#[cfg(not(any(target_arch = "riscv64", target_arch = "x86_64")))]
+compile_error!("Unsupported architecture. Expected target_arch = riscv64 or x86_64");
+
+#[cfg(not(any(plat_qemu_riscv, plat_vf2, plat_qemu_x86_64)))]
+compile_error!("No valid platform selected! Use --cfg plat_qemu_riscv, --cfg plat_vf2, or --cfg plat_qemu_x86_64");
+
+#[cfg(any(
+     all(plat_qemu_riscv, plat_vf2),
+     all(plat_qemu_riscv, plat_qemu_x86_64),
+     all(plat_vf2, plat_qemu_x86_64)
+))]
+compile_error!("Multiple platforms selected! Select exactly one platform cfg");
+
+#[cfg(all(target_arch = "x86_64", not(plat_qemu_x86_64)))]
+compile_error!("ARCH x86_64 requires PLATFORM=plat_qemu_x86_64");
+
+#[cfg(all(target_arch = "riscv64", not(any(plat_qemu_riscv, plat_vf2))))]
+compile_error!("ARCH riscv64 requires PLATFORM=plat_qemu_riscv or plat_vf2");
+
 #[cfg(plat_qemu_riscv)]
 mod qemu_riscv;
 #[cfg(plat_vf2)]
@@ -14,10 +34,6 @@ pub use qemu_riscv::*;
 pub use vf2::*;
 #[cfg(plat_qemu_x86_64)]
 pub use qemu_x86_64::*;
-
-// Compile-time check: ensure exactly one platform is selected
-#[cfg(not(any(plat_qemu_riscv, plat_vf2, plat_qemu_x86_64)))]
-compile_error!("No valid platform selected! Use --cfg plat_qemu_riscv, --cfg plat_vf2, or --cfg plat_qemu_x86_64");
 
 /// Alien os的标志
 pub const ALIEN_FLAG: &str = r"

@@ -9,4 +9,8 @@ edition = "2024"
 
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(plat_vf2)','cfg(plat_qemu_riscv)','cfg(plat_qemu_x86_64)'] }
+unexpected_cfgs = { level = "warn", check-cfg = [
+	'cfg(plat_vf2)',
+	'cfg(plat_qemu_riscv)',
+	'cfg(plat_qemu_x86_64)',
+] }

@@ -1,17 +1,31 @@
 use core::fmt::{Arguments, Write};
 
 use ksync::Mutex;
+
+#[inline(always)]
+#[cfg(target_arch = "riscv64")]
+pub fn current_cpu_prefix_id() -> usize {
+    let mut id: usize;
+    unsafe {
+        core::arch::asm!(
+            "mv {},tp",
+            out(reg) id,
+        );
+    }
+    id as u32 as usize
+}
+
+#[inline(always)]
+#[cfg(target_arch = "x86_64")]
+pub fn current_cpu_prefix_id() -> usize {
+    arch::cpu_id()
+}
+
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
         let domain_id = shared_heap::domain_id();
-        let mut id: usize;
-        unsafe {
-            core::arch::asm!(
-            "mv {},tp", out(reg)id,
-            );
-        }
-        id = id as u32 as usize;
+        let id = $crate::console::current_cpu_prefix_id();
         $crate::console::__print(format_args!("[{}][Domain:{}] {}", id,domain_id, format_args!($($arg)*)))
     };
 }

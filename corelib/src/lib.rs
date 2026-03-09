@@ -228,6 +228,7 @@ mod core_impl {
     }
 
     #[inline(always)]
+    #[cfg(target_arch = "riscv64")]
     fn current_tid_from_tp() -> Option<usize> {
         let mut tp: usize;
         unsafe {
@@ -236,12 +237,19 @@ mod core_impl {
                 out(reg) tp,
             )
         }
-        tp = tp >> 32;
+        tp >>= 32;
         if tp == 0 {
             None
         } else {
             Some(tp)
         }
+    }
+
+    #[inline(always)]
+    #[cfg(target_arch = "x86_64")]
+    fn current_tid_from_tp() -> Option<usize> {
+        // x86-64 does not use RISC-V tp semantics in this project path.
+        None
     }
     #[inline(always)]
     pub fn current_tid() -> AlienResult<Option<usize>> {
