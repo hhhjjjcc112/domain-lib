@@ -6,6 +6,11 @@ pub use riscv::register::sstatus::SPP;
 pub struct ExtSstatus(pub usize);
 
 impl ExtSstatus {
+    #[inline]
+    pub fn read_current() -> Self {
+        Self::read()
+    }
+
     pub fn read() -> Self {
         let val: usize;
         unsafe {
@@ -37,7 +42,33 @@ impl ExtSstatus {
     pub fn sie(&self) -> bool {
         (self.0 & (1 << 1)) != 0
     }
+
+    #[inline]
+    pub fn interrupts_enabled(&self) -> bool {
+        self.sie()
+    }
+
     pub fn set_sie(&mut self, value: bool) {
         self.0 = self.0 & !(1 << 1) | ((value as usize) << 1);
+    }
+
+    #[inline]
+    pub fn enable_interrupts(&mut self) {
+        self.set_sie(true);
+    }
+
+    #[inline]
+    pub fn disable_interrupts(&mut self) {
+        self.set_sie(false);
+    }
+
+    #[inline]
+    pub fn get_privilege(&self) -> SPP {
+        self.spp()
+    }
+
+    #[inline]
+    pub fn set_privilege(&mut self, mode: SPP) {
+        self.set_spp(mode);
     }
 }

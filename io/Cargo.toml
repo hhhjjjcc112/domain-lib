@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-memory_addr = { path = "../../utils/memory_addr" }
+memory_addr = { path = "../../base/mem/crates/memory_addr" }

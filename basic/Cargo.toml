@@ -16,7 +16,7 @@ shared_heap = { path = "../shared_heap" }
 io = { path = "../io" }
 
 pod = { git = "https://github.com/asterinas/pod", rev = "d7dba56" }
-memory_addr = { path = "../../utils/memory_addr" }
+memory_addr = { path = "../../base/mem/crates/memory_addr" }
 int-enum = "1"
 log = { version = "0", optional = true }
 pconst = { path = "../../utils/pconst", features = [

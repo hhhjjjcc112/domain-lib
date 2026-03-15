@@ -1,21 +1,16 @@
-//! x86-64 architecture support
+//! x86-64 架构支持。
 //!
-//! Provides CPU-level operations for x86-64 architecture using native x86-64 naming.
-//! References arceos axplat-x86-pc implementation.
+//! 提供 CPU 相关基础操作，命名保持 x86 语义。
 
 use core::arch::{asm, x86_64::_rdtsc};
 use core::sync::atomic::{AtomicU64, Ordering};
 use raw_cpuid::CpuId;
 
-// ============================================================================
-// Privilege Level (x86-64 CPL - Current Privilege Level)
-// ============================================================================
+// ==================== 特权级 ====================
 
-/// x86-64 Privilege Level (Ring 0-3)
-/// 
-/// x86-64 uses 4 privilege levels (rings), but modern OSes typically only use:
-/// - Ring 0 (Kernel/Supervisor mode)
-/// - Ring 3 (User mode)
+/// x86-64 特权级（Ring 0-3）。
+///
+/// 实际常用 Ring 0 与 Ring 3。
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PrivilegeLevel {
     /// Ring 3 - User mode
@@ -25,7 +20,7 @@ pub enum PrivilegeLevel {
 }
 
 impl PrivilegeLevel {
-    /// Create from raw CPL value
+    /// 由 CPL 原始值构造。
     pub fn from_cpl(cpl: u8) -> Self {
         match cpl & 0x3 {
             0 => PrivilegeLevel::Kernel,
@@ -33,17 +28,15 @@ impl PrivilegeLevel {
         }
     }
     
-    /// Convert to raw CPL value
+    /// 转为 CPL 原始值。
     pub fn as_cpl(&self) -> u8 {
         *self as u8
     }
 }
 
-// ============================================================================
-// RFLAGS Register
-// ============================================================================
+// ==================== RFLAGS ====================
 
-/// RFLAGS register bits
+/// RFLAGS 位定义。
 pub mod rflags_bits {
     /// Carry Flag
     pub const CF: usize = 1 << 0;
@@ -81,14 +74,17 @@ pub mod rflags_bits {
     pub const ID: usize = 1 << 21;
 }
 
-/// RFLAGS register wrapper for x86-64
-/// 
-/// The RFLAGS register contains status flags, control flags, and system flags.
+/// x86-64 RFLAGS 包装类型。
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Rflags(pub usize);
 
 impl Rflags {
-    /// Read current RFLAGS register value
+    #[inline]
+    pub fn read_current() -> Self {
+        Self::read()
+    }
+
+    /// 读取当前 RFLAGS。
     pub fn read() -> Self {
         let mut rflags: usize;
         unsafe {
@@ -102,34 +98,39 @@ impl Rflags {
         Rflags(rflags)
     }
     
-    /// Get raw value
+    /// 获取原始位值。
     pub fn bits(&self) -> usize {
         self.0
     }
 
-    /// Set raw value
+    /// 设置原始位值。
     pub fn set_bits(&mut self, val: usize) {
         self.0 = val;
     }
 
-    // ========== Interrupt Flag (IF) operations ==========
+    // IF 位操作。
     
-    /// Check if interrupts are enabled (IF flag)
+    /// 查询中断是否开启（IF 位）。
     pub fn interrupt_enabled(&self) -> bool {
         (self.0 & rflags_bits::IF) != 0
     }
+
+    #[inline]
+    pub fn interrupts_enabled(&self) -> bool {
+        self.interrupt_enabled()
+    }
     
-    /// Enable interrupts (set IF flag)
+    /// 开启中断（置 IF）。
     pub fn enable_interrupts(&mut self) {
         self.0 |= rflags_bits::IF;
     }
     
-    /// Disable interrupts (clear IF flag)
+    /// 关闭中断（清 IF）。
     pub fn disable_interrupts(&mut self) {
         self.0 &= !rflags_bits::IF;
     }
     
-    /// Set interrupt flag to specific value
+    /// 设置 IF 位。
     pub fn set_interrupt_flag(&mut self, value: bool) {
         if value {
             self.enable_interrupts();
@@ -138,25 +139,24 @@ impl Rflags {
         }
     }
 
-    // ========== I/O Privilege Level (IOPL) operations ==========
+    // IOPL 操作。
     
-    /// Get I/O Privilege Level (0-3)
+    /// 获取 IOPL（0-3）。
     pub fn iopl(&self) -> u8 {
         ((self.0 & rflags_bits::IOPL_MASK) >> 12) as u8
     }
     
-    /// Set I/O Privilege Level
+    /// 设置 IOPL。
     pub fn set_iopl(&mut self, level: u8) {
         self.0 = (self.0 & !rflags_bits::IOPL_MASK) | (((level & 0x3) as usize) << 12);
     }
     
-    // ========== Stored privilege level for trap frames ==========
-    // We use a reserved bit position (bit 63) to store the return privilege level
-    // since RFLAGS doesn't directly encode CPL
+    // 陷入帧返回特权级缓存位。
+    // RFLAGS 不直接编码 CPL，这里用 bit63 临时保存。
     
     const STORED_CPL_BIT: usize = 63;
     
-    /// Get stored privilege level for trap return
+    /// 获取保存的返回特权级。
     pub fn privilege_level(&self) -> PrivilegeLevel {
         if (self.0 >> Self::STORED_CPL_BIT) & 1 == 0 {
             PrivilegeLevel::User
@@ -165,24 +165,34 @@ impl Rflags {
         }
     }
     
-    /// Set stored privilege level for trap return
+    /// 设置保存的返回特权级。
     pub fn set_privilege_level(&mut self, level: PrivilegeLevel) {
         match level {
             PrivilegeLevel::User => self.0 &= !(1 << Self::STORED_CPL_BIT),
             PrivilegeLevel::Kernel => self.0 |= 1 << Self::STORED_CPL_BIT,
         }
     }
+
+    #[inline]
+    pub fn get_privilege(&self) -> PrivilegeLevel {
+        self.privilege_level()
+    }
+
+    #[inline]
+    pub fn set_privilege(&mut self, level: PrivilegeLevel) {
+        self.set_privilege_level(level);
+    }
     
-    // ========== Default settings for new tasks ==========
+    // 新任务默认状态。
     
-    /// Create RFLAGS for a new user task
+    /// 构造用户态任务初始 RFLAGS。
     pub fn new_user() -> Self {
         let mut flags = Rflags(0x202); // IF set, reserved bit 1 always set
         flags.set_privilege_level(PrivilegeLevel::User);
         flags
     }
     
-    /// Create RFLAGS for a new kernel task
+    /// 构造内核态任务初始 RFLAGS。
     pub fn new_kernel() -> Self {
         let mut flags = Rflags(0x202); // IF set
         flags.set_privilege_level(PrivilegeLevel::Kernel);
@@ -603,42 +613,3 @@ pub fn wfi() {
     halt();
 }
 
-// ============================================================================
-// ProcessorStatusIf Trait Implementation
-// ============================================================================
-
-use crate::traits::ProcessorStatusIf;
-
-impl ProcessorStatusIf for Rflags {
-    type PrivilegeMode = PrivilegeLevel;
-    
-    #[inline]
-    fn read_current() -> Self {
-        Self::read()
-    }
-    
-    #[inline]
-    fn interrupts_enabled(&self) -> bool {
-        self.interrupt_enabled()
-    }
-    
-    #[inline]
-    fn enable_interrupts(&mut self) {
-        Rflags::enable_interrupts(self)
-    }
-    
-    #[inline]
-    fn disable_interrupts(&mut self) {
-        Rflags::disable_interrupts(self)
-    }
-    
-    #[inline]
-    fn get_privilege(&self) -> Self::PrivilegeMode {
-        self.privilege_level()
-    }
-    
-    #[inline]
-    fn set_privilege(&mut self, mode: Self::PrivilegeMode) {
-        self.set_privilege_level(mode)
-    }
-}

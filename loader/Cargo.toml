@@ -9,5 +9,5 @@ storage = { path = "../storage" }
 
 xmas-elf = "0.10"
 bitflags = "2.6.0"
-memory_addr = { path = "../../utils/memory_addr" }
+memory_addr = { path = "../../base/mem/crates/memory_addr" }
 log = "0"

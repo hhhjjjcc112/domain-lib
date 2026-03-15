@@ -7,7 +7,7 @@
 #[cfg(not(any(target_arch = "riscv64", target_arch = "x86_64")))]
 compile_error!("Unsupported architecture! Only riscv64 and x86_64 are supported.");
 
-use arch::{ProcessorStatus, PRIVILEGE_USER, ProcessorStatusOps};
+use arch::{PRIVILEGE_USER, ProcessorStatus};
 use memory_addr::{PhysAddr, VirtAddr};
 pub use task_meta::TaskContext;
 

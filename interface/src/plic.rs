@@ -26,5 +26,4 @@ pub struct PlicInfo {
 pub enum PlicType {
     Qemu,
     SiFive,
-    Apic, // x86-64 APIC/IOAPIC
 }

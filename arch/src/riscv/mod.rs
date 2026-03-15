@@ -1,6 +1,6 @@
-//! RISC-V architecture support
+//! RISC-V 架构支持。
 //!
-//! Provides CPU-level operations for RISC-V architecture.
+//! 提供 CPU 相关基础操作。
 
 mod regs;
 
@@ -10,11 +10,9 @@ use core::sync::atomic::{AtomicU64, Ordering};
 pub use regs::*;
 use riscv::register::satp;
 
-// ============================================================================
-// CPU identification
-// ============================================================================
+// ==================== CPU 标识 ====================
 
-/// Get current hart ID
+/// 获取当前 hart ID。
 #[inline(always)]
 pub fn hart_id() -> usize {
     let mut id: usize;
@@ -23,113 +21,109 @@ pub fn hart_id() -> usize {
         "mv {},tp", out(reg)id,
         );
     }
-    // lower 32 bits of tp register is the hart id
+    // tp 低 32 位保存 hart id。
     id as u32 as usize
 }
 
-/// Get current CPU ID (alias for hart_id, unified interface)
+/// 获取当前 CPU ID（hart_id 别名）。
 #[inline(always)]
 pub fn cpu_id() -> usize {
     hart_id()
 }
 
-/// Get current CPU ID (alias for hart_id)
+/// 获取当前 CPU ID（hart_id 别名）。
 #[inline(always)]
 pub fn current_cpu_id() -> usize {
     hart_id()
 }
 
-// ============================================================================
-// Interrupt control
-// ============================================================================
+// ==================== 中断控制 ====================
 
-/// Check if global interrupts are enabled
+/// 查询全局中断是否开启。
 pub fn is_interrupt_enable() -> bool {
     riscv::register::sstatus::read().sie()
 }
 
-/// Disable global interrupts
+/// 关闭全局中断。
 pub fn interrupt_disable() {
     unsafe {
         riscv::register::sstatus::clear_sie();
     }
 }
 
-/// Enable global interrupts
+/// 开启全局中断。
 pub fn interrupt_enable() {
     unsafe {
         riscv::register::sstatus::set_sie();
     }
 }
 
-/// Enable external interrupts
+/// 开启外部中断。
 pub fn external_interrupt_enable() {
     unsafe {
         riscv::register::sie::set_sext();
     }
 }
 
-/// Enable software interrupts
+/// 开启软件中断。
 pub fn software_interrupt_enable() {
     unsafe {
         riscv::register::sie::set_ssoft();
     }
 }
 
-/// Disable external interrupts
+/// 关闭外部中断。
 pub fn external_interrupt_disable() {
     unsafe {
         riscv::register::sie::clear_sext();
     }
 }
 
-/// Enable timer interrupts
+/// 开启定时器中断。
 pub fn timer_interrupt_enable() {
     unsafe {
         riscv::register::sie::set_stimer();
     }
 }
 
-// ============================================================================
-// Time
-// ============================================================================
+// ==================== 时间相关 ====================
 
-/// Clock frequency in Hz (set by platform)
+/// 时钟频率（Hz，由平台设置）。
 static CLOCK_FREQ_HZ: AtomicU64 = AtomicU64::new(12_500_000); // Default 12.5MHz
 
-/// Initial timer value at boot
+/// 启动时计时器基线值。
 static TIME_INIT: AtomicU64 = AtomicU64::new(0);
 
-/// RTC epoch offset in nanoseconds
+/// 纪元偏移（纳秒）。
 static EPOCH_OFFSET_NANOS: AtomicU64 = AtomicU64::new(0);
 
-/// Initialize clock frequency
+/// 初始化时钟频率。
 pub fn init_clock_freq(freq_hz: u64) {
     CLOCK_FREQ_HZ.store(freq_hz, Ordering::SeqCst);
 }
 
-/// Initialize time baseline
+/// 初始化时间基线。
 pub fn init_time_baseline() {
     TIME_INIT.store(riscv::register::time::read() as u64, Ordering::SeqCst);
 }
 
-/// Set epoch offset for wall time
+/// 设置墙钟时间偏移。
 pub fn set_epoch_offset_nanos(offset: u64) {
     EPOCH_OFFSET_NANOS.store(offset, Ordering::SeqCst);
 }
 
-/// Get clock frequency in Hz
+/// 获取时钟频率（Hz）。
 pub fn clock_frequency() -> u64 {
     CLOCK_FREQ_HZ.load(Ordering::Relaxed)
 }
 
-/// Read raw timer value
+/// 读取原始计时器值。
 #[inline]
 pub fn read_timer() -> usize {
     riscv::register::time::read()
 }
 
-/// Read current ticks since init
+/// 读取自基线以来的 tick。
 #[inline]
 pub fn current_ticks() -> u64 {
     let current = riscv::register::time::read() as u64;
@@ -137,12 +131,12 @@ pub fn current_ticks() -> u64 {
     current.saturating_sub(init)
 }
 
-/// Read cycle counter
+/// 读取周期计数器。
 pub fn read_cycle() -> usize {
     riscv::register::cycle::read()
 }
 
-/// Convert ticks to nanoseconds
+/// ticks 转纳秒。
 #[inline]
 pub fn ticks_to_nanos(ticks: u64) -> u64 {
     let freq = CLOCK_FREQ_HZ.load(Ordering::Relaxed);
@@ -152,36 +146,34 @@ pub fn ticks_to_nanos(ticks: u64) -> u64 {
     (ticks as u128 * 1_000_000_000 / freq as u128) as u64
 }
 
-/// Convert nanoseconds to ticks
+/// 纳秒转 ticks。
 #[inline]
 pub fn nanos_to_ticks(nanos: u64) -> u64 {
     let freq = CLOCK_FREQ_HZ.load(Ordering::Relaxed);
     (nanos as u128 * freq as u128 / 1_000_000_000) as u64
 }
 
-/// Get epoch offset in nanoseconds
+/// 获取纪元偏移（纳秒）。
 #[inline]
 pub fn epochoffset_nanos() -> u64 {
     EPOCH_OFFSET_NANOS.load(Ordering::Relaxed)
 }
 
-/// Get monotonic time in nanoseconds since boot
+/// 获取单调时间（纳秒）。
 #[inline]
 pub fn monotonic_time_nanos() -> u64 {
     ticks_to_nanos(current_ticks())
 }
 
-/// Get wall time in nanoseconds since Unix epoch
+/// 获取墙钟时间（纳秒）。
 #[inline]
 pub fn wall_time_nanos() -> u64 {
     monotonic_time_nanos() + epochoffset_nanos()
 }
 
-// ============================================================================
-// Paging
-// ============================================================================
+// ==================== 分页相关 ====================
 
-/// Activate page table (Sv39 mode)
+/// 激活页表（Sv39）。
 pub fn activate_paging_mode(root_ppn: usize) {
     unsafe {
         sfence_vma_all();
@@ -190,12 +182,12 @@ pub fn activate_paging_mode(root_ppn: usize) {
     }
 }
 
-/// Flush all TLB entries
+/// 刷新全部 TLB。
 pub fn sfence_vma_all() {
     riscv::asm::sfence_vma_all()
 }
 
-/// Flush TLB entry for a specific virtual address
+/// 刷新指定虚拟地址的 TLB。
 pub fn sfence_vma(vaddr: usize) {
     unsafe {
         asm!(
@@ -206,66 +198,25 @@ pub fn sfence_vma(vaddr: usize) {
     }
 }
 
-/// Allow access to user memory (set SUM bit)
+/// 允许内核访问用户内存（SUM=1）。
 pub fn allow_access_user_memory() {
     unsafe {
         riscv::register::sstatus::set_sum();
     }
 }
 
-/// Disallow access to user memory (clear SUM bit)
+/// 禁止内核访问用户内存（SUM=0）。
 pub fn disallow_access_user_memory() {
     unsafe {
         riscv::register::sstatus::clear_sum();
     }
 }
 
-// ============================================================================
-// Halt and Wait
-// ============================================================================
+// ==================== 等待/停机 ====================
 
-/// Wait for interrupt
+/// 等待中断。
 #[inline(always)]
 pub fn wfi() {
     riscv::asm::wfi();
 }
 
-// ============================================================================
-// ProcessorStatusIf Trait Implementation
-// ============================================================================
-
-use crate::traits::ProcessorStatusIf;
-
-impl ProcessorStatusIf for ExtSstatus {
-    type PrivilegeMode = SPP;
-    
-    #[inline]
-    fn read_current() -> Self {
-        Self::read()
-    }
-    
-    #[inline]
-    fn interrupts_enabled(&self) -> bool {
-        self.sie()
-    }
-    
-    #[inline]
-    fn enable_interrupts(&mut self) {
-        self.set_sie(true);
-    }
-    
-    #[inline]
-    fn disable_interrupts(&mut self) {
-        self.set_sie(false);
-    }
-    
-    #[inline]
-    fn get_privilege(&self) -> Self::PrivilegeMode {
-        self.spp()
-    }
-    
-    #[inline]
-    fn set_privilege(&mut self, mode: Self::PrivilegeMode) {
-        self.set_spp(mode);
-    }
-}
