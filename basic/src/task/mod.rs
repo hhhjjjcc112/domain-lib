@@ -169,6 +169,8 @@ pub struct TrapFrame {
 
 #[cfg(target_arch = "x86_64")]
 impl TrapFrame {
+    pub const OFFSET_K_SP: usize = core::mem::offset_of!(TrapFrame, k_sp);
+
     fn init_for_task(
         entry: usize,
         sp: usize,
@@ -225,6 +227,10 @@ impl TrapFrame {
 
     pub fn update_k_sp(&mut self, val: VirtAddr) {
         self.k_sp = val.as_usize();
+    }
+
+    pub fn kernel_sp(&self) -> VirtAddr {
+        VirtAddr::from(self.k_sp)
     }
 
     pub fn update_user_sp(&mut self, val: VirtAddr) {
