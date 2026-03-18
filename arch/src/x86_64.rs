@@ -1,10 +1,74 @@
 //! x86-64 架构支持。
 //!
 //! 提供 CPU 相关基础操作，命名保持 x86 语义。
+#[percpu::def_percpu]
+static CPU_ID: usize = 0;
+
 
 use core::arch::{asm, x86_64::_rdtsc};
 use core::sync::atomic::{AtomicU64, Ordering};
 use raw_cpuid::CpuId;
+use x86_64::{
+    instructions::{interrupts, hlt},
+    registers::{
+        rflags, control,
+        model_specific::Msr,
+    },
+};
+
+
+
+#[inline(always)]
+fn cpu_id_from_cpuid() -> usize {
+    let cpuid = CpuId::new();
+    cpuid
+        .get_feature_info()
+        .map(|info| info.initial_local_apic_id() as usize)
+        .unwrap_or(0)
+}
+
+/// 早期读取当前CPU ID（始终走CPUID，避免依赖percpu状态）。
+#[inline(always)]
+pub fn cpu_id_early() -> usize {
+    cpu_id_from_cpuid()
+}
+
+#[inline(always)]
+pub fn cpu_id() -> usize {
+    CPU_ID.read_current()
+}
+
+/// Get Local APIC ID (alias for cpu_id)
+#[inline(always)]
+pub fn apic_id() -> usize {
+    cpu_id()
+}
+
+/// Get current CPU ID
+#[inline(always)]
+pub fn current_cpu_id() -> usize {
+    cpu_id()
+}
+
+#[inline(always)]
+pub fn hart_id() -> usize {
+    cpu_id()
+}
+
+/// 初始化BSP的percpu，并写入当前CPU ID。
+///
+/// 需在 clear_bss() 之后调用。
+pub fn init_percpu_primary(cpu_id: usize) {
+    percpu::init_in_place().unwrap();
+    percpu::init_percpu_reg(cpu_id);
+    CPU_ID.write_current(cpu_id);
+}
+
+/// 初始化从核percpu寄存器，并写入当前CPU ID。
+pub fn init_percpu_secondary(cpu_id: usize) {
+    percpu::init_percpu_reg(cpu_id);
+    CPU_ID.write_current(cpu_id);
+}
 
 // ==================== 特权级 ====================
 
@@ -86,16 +150,7 @@ impl Rflags {
 
     /// 读取当前 RFLAGS。
     pub fn read() -> Self {
-        let mut rflags: usize;
-        unsafe {
-            asm!(
-                "pushfq",
-                "pop {}",
-                out(reg) rflags,
-                options(nomem, preserves_flags)
-            );
-        }
-        Rflags(rflags)
+        Rflags(rflags::read().bits() as usize)
     }
     
     /// 获取原始位值。
@@ -201,72 +256,22 @@ impl Rflags {
 }
 
 // ============================================================================
-// CPU identification
-// ============================================================================
-
-/// Get current CPU ID via CPUID instruction (returns Local APIC ID)
-#[inline(always)]
-pub fn cpu_id() -> usize {
-    // Use raw-cpuid crate to avoid direct cpuid inline asm issues with rbx
-    use raw_cpuid::CpuId;
-    let cpuid = CpuId::new();
-    cpuid
-        .get_feature_info()
-        .map(|info| info.initial_local_apic_id() as usize)
-        .unwrap_or(0)
-}
-
-/// Get Local APIC ID (alias for cpu_id)
-#[inline(always)]
-pub fn apic_id() -> usize {
-    cpu_id()
-}
-
-/// Get current CPU ID
-#[inline(always)]
-pub fn current_cpu_id() -> usize {
-    cpu_id()
-}
-
-/// Get current CPU ID (RISC-V compatibility alias)
-/// 
-/// This function exists for compatibility with code that uses RISC-V terminology.
-/// On x86-64, this returns the Local APIC ID.
-#[inline(always)]
-pub fn hart_id() -> usize {
-    cpu_id()
-}
-
-// ============================================================================
 // Interrupt control
 // ============================================================================
 
 /// Check if interrupts are enabled
 pub fn is_interrupt_enable() -> bool {
-    let mut rflags: usize;
-    unsafe {
-        asm!(
-            "pushfq",
-            "pop {}",
-            out(reg) rflags,
-            options(nomem, preserves_flags)
-        );
-    }
-    (rflags & (1 << 9)) != 0 // IF flag
+    rflags::read().contains(rflags::RFlags::INTERRUPT_FLAG)
 }
 
 /// Disable interrupts
 pub fn interrupt_disable() {
-    unsafe {
-        asm!("cli", options(nomem, nostack, preserves_flags));
-    }
+    interrupts::disable();
 }
 
 /// Enable interrupts
 pub fn interrupt_enable() {
-    unsafe {
-        asm!("sti", options(nomem, nostack, preserves_flags));
-    }
+    interrupts::enable();
 }
 
 /// Enable external interrupts (no-op on x86, handled by APIC/PIC)
@@ -369,32 +374,30 @@ pub fn wall_time_nanos() -> u64 {
     monotonic_time_nanos() + epochoffset_nanos()
 }
 
-// ============================================================================
-// Paging
-// ============================================================================
-
 /// Activate paging mode by setting CR3
 pub fn activate_paging_mode(root_ppn: usize) {
     let root_paddr = root_ppn << 12;
     unsafe {
-        asm!("mov cr3, {}", in(reg) root_paddr, options(nomem, nostack, preserves_flags));
+        control::Cr3::write(
+            x86_64::structures::paging::PhysFrame::containing_address(
+                x86_64::PhysAddr::new(root_paddr as u64)
+            ),
+            control::Cr3Flags::empty()
+        );
     }
 }
 
 /// Flush all TLB entries (sfence.vma equivalent)
 pub fn sfence_vma_all() {
     unsafe {
-        let cr3: usize;
-        asm!("mov {}, cr3", out(reg) cr3, options(nomem, nostack, preserves_flags));
-        asm!("mov cr3, {}", in(reg) cr3, options(nomem, nostack, preserves_flags));
+        let (frame, flags) = control::Cr3::read();
+        control::Cr3::write(frame, flags);
     }
 }
 
 /// Flush TLB entry for a specific virtual address
 pub fn sfence_vma(vaddr: usize) {
-    unsafe {
-        asm!("invlpg [{}]", in(reg) vaddr, options(nostack, preserves_flags));
-    }
+    x86_64::instructions::tlb::flush(x86_64::VirtAddr::new(vaddr as u64));
 }
 
 /// Allow access to user memory (SMAP override) - no-op without SMAP
@@ -454,45 +457,37 @@ pub fn init_tsc() {
 
 /// Read CR0 register
 pub fn read_cr0() -> usize {
-    let value: usize;
-    unsafe {
-        asm!("mov {}, cr0", out(reg) value, options(nomem, nostack, preserves_flags));
-    }
-    value
+    control::Cr0::read().bits() as usize
 }
 
 /// Read CR2 register (page fault linear address)
 pub fn read_cr2() -> usize {
-    let value: usize;
-    unsafe {
-        asm!("mov {}, cr2", out(reg) value, options(nomem, nostack, preserves_flags));
-    }
-    value
+    control::Cr2::read()
+        .map(|addr| addr.as_u64() as usize)
+        .unwrap_or(0)
 }
 
 /// Read CR3 register (page table base)
 pub fn read_cr3() -> usize {
-    let value: usize;
-    unsafe {
-        asm!("mov {}, cr3", out(reg) value, options(nomem, nostack, preserves_flags));
-    }
-    value
+    let (frame, _) = control::Cr3::read();
+    frame.start_address().as_u64() as usize
 }
 
 /// Write CR3 register
 pub fn write_cr3(value: usize) {
     unsafe {
-        asm!("mov cr3, {}", in(reg) value, options(nomem, nostack, preserves_flags));
+        control::Cr3::write(
+            x86_64::structures::paging::PhysFrame::containing_address(
+                x86_64::PhysAddr::new(value as u64)
+            ),
+            control::Cr3Flags::empty()
+        );
     }
 }
 
 /// Read CR4 register
 pub fn read_cr4() -> usize {
-    let value: usize;
-    unsafe {
-        asm!("mov {}, cr4", out(reg) value, options(nomem, nostack, preserves_flags));
-    }
-    value
+    control::Cr4::read().bits() as usize
 }
 
 // ============================================================================
@@ -501,32 +496,15 @@ pub fn read_cr4() -> usize {
 
 /// Read MSR register
 pub fn read_msr(msr: u32) -> u64 {
-    let low: u32;
-    let high: u32;
     unsafe {
-        asm!(
-            "rdmsr",
-            in("ecx") msr,
-            out("eax") low,
-            out("edx") high,
-            options(nomem, nostack, preserves_flags)
-        );
+        Msr::new(msr).read()
     }
-    ((high as u64) << 32) | (low as u64)
 }
 
 /// Write MSR register
 pub fn write_msr(msr: u32, value: u64) {
-    let low = value as u32;
-    let high = (value >> 32) as u32;
     unsafe {
-        asm!(
-            "wrmsr",
-            in("ecx") msr,
-            in("eax") low,
-            in("edx") high,
-            options(nomem, nostack, preserves_flags)
-        );
+        Msr::new(msr).write(value);
     }
 }
 
@@ -594,9 +572,7 @@ pub fn cpu_vendor() -> Option<&'static str> {
 /// Halt the CPU until the next interrupt
 #[inline(always)]
 pub fn halt() {
-    unsafe {
-        asm!("hlt", options(nomem, nostack));
-    }
+    hlt();
 }
 
 /// Pause instruction (spin-loop hint)
@@ -611,5 +587,35 @@ pub fn pause() {
 #[inline(always)]
 pub fn wfi() {
     halt();
+}
+
+// ============================================================================
+// FPU / SSE 初始化
+// ============================================================================
+
+/// 初始化 FPU/SSE 支持。
+///
+/// 需在每个 CPU 核心启动时各调用一次：
+/// - 清 CR0.EM（禁止 FPU 模拟）、设 CR0.MP（监控协处理器）、清 CR0.TS（不触发任务切换陷阱）
+/// - 设 CR4.OSFXSR（允许 FXSAVE/FXRSTOR 及 SSE 指令）
+/// - 设 CR4.OSXMMEXCPT（允许未屏蔽 SSE 异常）
+/// - 执行 FNINIT 重置 x87 FPU 到默认状态
+pub fn init_fpu() {
+    unsafe {
+        let mut cr0: usize;
+        asm!("mov {}, cr0", out(reg) cr0, options(nomem, nostack, preserves_flags));
+        cr0 &= !(1 << 2); // 清 EM
+        cr0 |= 1 << 1;    // 设 MP
+        cr0 &= !(1 << 3); // 清 TS
+        asm!("mov cr0, {}", in(reg) cr0, options(nomem, nostack, preserves_flags));
+
+        let mut cr4: usize;
+        asm!("mov {}, cr4", out(reg) cr4, options(nomem, nostack, preserves_flags));
+        cr4 |= 1 << 9;  // OSFXSR
+        cr4 |= 1 << 10; // OSXMMEXCPT
+        asm!("mov cr4, {}", in(reg) cr4, options(nomem, nostack, preserves_flags));
+
+        asm!("fninit", options(nomem, nostack, preserves_flags));
+    }
 }
 

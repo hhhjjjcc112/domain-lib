@@ -7,6 +7,7 @@
 #[cfg(not(any(target_arch = "riscv64", target_arch = "x86_64")))]
 compile_error!("Unsupported architecture! Only riscv64 and x86_64 are supported.");
 
+#[cfg(target_arch = "riscv64")]
 use arch::{PRIVILEGE_USER, ProcessorStatus};
 use memory_addr::{PhysAddr, VirtAddr};
 pub use task_meta::TaskContext;
@@ -158,18 +159,21 @@ pub struct TrapFrame {
     pub rflags_val: usize,
     pub rsp: usize,
     pub ss: usize,
-    // Kernel state
+    // Kernel state（k_cr3@176, k_sp@184, trap_handler@192, cpu_id@200，合计 208 字节，16 字节对齐）
     k_cr3: usize,
     k_sp: usize,
     trap_handler: usize,
     cpu_id: usize,
-    /// Processor status (using unified ProcessorStatus type = Rflags on x86-64)
-    pub status: ProcessorStatus,
+    /// FPU/SSE 状态区（fxsave64/fxrstor64，512 字节，偏移 208）
+    fx_state: [u64; 64],
 }
 
 #[cfg(target_arch = "x86_64")]
 impl TrapFrame {
+    pub const OFFSET_K_CR3: usize = core::mem::offset_of!(TrapFrame, k_cr3);
     pub const OFFSET_K_SP: usize = core::mem::offset_of!(TrapFrame, k_sp);
+    pub const OFFSET_TRAP_HANDLER: usize = core::mem::offset_of!(TrapFrame, trap_handler);
+    pub const USER_CONTEXT_SIZE: usize = Self::OFFSET_K_CR3;
 
     fn init_for_task(
         entry: usize,
@@ -178,10 +182,6 @@ impl TrapFrame {
         k_sp: usize,
         trap_handler: usize,
     ) -> Self {
-        let mut status = ProcessorStatus::read_current();
-        status.enable_interrupts();
-        status.set_privilege(PRIVILEGE_USER);
-        status.disable_interrupts();
         Self {
             r15: 0,
             r14: 0,
@@ -209,7 +209,7 @@ impl TrapFrame {
             k_sp,
             trap_handler,
             cpu_id: 0,
-            status,
+            fx_state: Self::INITIAL_FX_STATE,
         }
     }
 
@@ -265,5 +265,41 @@ impl TrapFrame {
         [
             self.rax, self.rdi, self.rsi, self.rdx, self.r10, self.r8, self.r9,
         ]
+    }
+
+    /// x86-64 标准初始 FPU/SSE 状态（fxsave64 格式，512 字节）：
+    /// - FCW = 0x037F（屏蔽全部 x87 异常，80 位精度）
+    /// - MXCSR = 0x1F80（屏蔽全部 SSE 异常）
+    const INITIAL_FX_STATE: [u64; 64] = {
+        let mut s = [0u64; 64];
+        s[0] = 0x037F;  // bytes 0-1: FCW
+        s[3] = 0x1F80;  // bytes 24-27: MXCSR（小端：低 32 位）
+        s
+    };
+
+    /// 将当前 CPU 的 FPU/SSE 状态保存到此 TrapFrame。
+    /// 用于用户态进入内核时保存用户的浮点上下文。
+    #[inline]
+    pub fn save_fx_state(&mut self) {
+        unsafe {
+            core::arch::asm!(
+                "fxsave64 [{ptr}]",
+                ptr = in(reg) self.fx_state.as_mut_ptr(),
+                options(nostack, preserves_flags)
+            );
+        }
+    }
+
+    /// 从此 TrapFrame 恢复 FPU/SSE 状态到 CPU。
+    /// 用于返回用户态前恢复用户的浮点上下文。
+    #[inline]
+    pub fn restore_fx_state(&self) {
+        unsafe {
+            core::arch::asm!(
+                "fxrstor64 [{ptr}]",
+                ptr = in(reg) self.fx_state.as_ptr(),
+                options(nostack, preserves_flags)
+            );
+        }
     }
 }
