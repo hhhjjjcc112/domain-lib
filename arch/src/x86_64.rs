@@ -265,11 +265,13 @@ pub fn is_interrupt_enable() -> bool {
 }
 
 /// Disable interrupts
+#[inline(always)]
 pub fn interrupt_disable() {
     interrupts::disable();
 }
 
 /// Enable interrupts
+#[inline(always)]
 pub fn interrupt_enable() {
     interrupts::enable();
 }

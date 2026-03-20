@@ -50,8 +50,34 @@ impl TaskContext {
 // ============================================================================
 
 #[cfg(target_arch = "x86_64")]
+#[repr(C, align(16))]
+#[derive(Debug, Clone, Copy)]
+pub struct FpSimdState {
+    pub data: [u8; 512],
+}
+
+#[cfg(target_arch = "x86_64")]
+impl FpSimdState {
+    pub const fn new() -> Self {
+        let mut data = [0u8; 512];
+        data[0] = 0x7f;
+        data[1] = 0x03;
+        data[24] = 0x80;
+        data[25] = 0x1f;
+        Self { data }
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+impl Default for FpSimdState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
 #[derive(Debug, Clone, Copy, Default)]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct TaskContext {
     /// Return address (rip after ret)
     rip: usize,
@@ -64,6 +90,8 @@ pub struct TaskContext {
     r13: usize,
     r14: usize,
     r15: usize,
+    /// 任务级 FP/SIMD 状态（fxsave64/fxrstor64 格式，16 字节对齐）
+    fp_simd: FpSimdState,
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -78,6 +106,7 @@ impl TaskContext {
             r13: 0,
             r14: 0,
             r15: 0,
+            fp_simd: FpSimdState::new(),
         }
     }
 
@@ -91,6 +120,7 @@ impl TaskContext {
             r13: 0,
             r14: 0,
             r15: 0,
+            fp_simd: FpSimdState::new(),
         }
     }
 

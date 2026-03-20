@@ -63,6 +63,8 @@ pub const KERNEL_HEAP_SIZE: usize = HEAP_SIZE;
 pub const TRAMPOLINE: usize = usize::MAX - 2 * FRAME_SIZE + 1;
 
 pub const TRAP_CONTEXT_BASE: usize = TRAMPOLINE - FRAME_SIZE;
+#[cfg(target_arch = "x86_64")]
+pub const PERCPU_MIRROR_BASE: usize = TRAMPOLINE - 0x1_0000_0000_00;
 pub const USER_KERNEL_STACK_SIZE: usize = FRAME_SIZE * 16;
 pub const KTHREAD_STACK_SIZE: usize = FRAME_SIZE * 2;
 /// 线程数量大小限制
