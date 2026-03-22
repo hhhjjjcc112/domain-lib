@@ -1,129 +1,119 @@
-//! Time-related operations
+//! 时间相关操作
 //!
-//! Provides unified time interfaces across architectures.
+//! 提供跨架构统一时间接口。
 
 use core::time::Duration;
 
 use pconst::time::{TimeSpec, TimeVal};
 
-/// Number of nanoseconds per second
+/// 每秒纳秒数
 pub const NANOS_PER_SEC: u64 = 1_000_000_000;
-/// Number of microseconds per second
+/// 每秒微秒数
 pub const MICROS_PER_SEC: u64 = 1_000_000;
-/// Number of milliseconds per second
+/// 每秒毫秒数
 pub const MILLIS_PER_SEC: u64 = 1_000;
 
-// ============================================================================
-// Basic time reading
-// ============================================================================
+// 基础时间读取
 
-/// Read raw timer value (architecture-specific)
+/// 读取原始计时器值（架构相关）
 #[inline]
 pub fn read_timer() -> usize {
     arch::read_timer()
 }
 
-/// Read current ticks since system init
+/// 读取系统启动后的 tick 数
 #[inline]
 pub fn current_ticks() -> u64 {
     arch::current_ticks()
 }
 
-/// Convert ticks to nanoseconds
+/// 将 ticks 转换为纳秒
 #[inline]
 pub fn ticks_to_nanos(ticks: u64) -> u64 {
     arch::ticks_to_nanos(ticks)
 }
 
-/// Convert nanoseconds to ticks
+/// 将纳秒转换为 ticks
 #[inline]
 pub fn nanos_to_ticks(nanos: u64) -> u64 {
     arch::nanos_to_ticks(nanos)
 }
 
-// ============================================================================
-// Monotonic time (since boot)
-// ============================================================================
+// 单调时间（自启动以来）
 
-/// Get monotonic time in nanoseconds since boot
+/// 获取自启动以来的单调时间（纳秒）
 #[inline]
 pub fn monotonic_time_nanos() -> u64 {
     arch::monotonic_time_nanos()
 }
 
-/// Get monotonic time as Duration since boot
+/// 获取自启动以来的单调时间（Duration）
 #[inline]
 pub fn monotonic_time() -> Duration {
     Duration::from_nanos(monotonic_time_nanos())
 }
 
-/// Read time in milliseconds since boot
+/// 读取自启动以来的毫秒数
 #[inline]
 pub fn read_time_ms() -> u64 {
     monotonic_time_nanos() / 1_000_000
 }
 
-/// Read time in microseconds since boot
+/// 读取自启动以来的微秒数
 #[inline]
 pub fn read_time_us() -> u64 {
     monotonic_time_nanos() / 1_000
 }
 
-/// Read time in nanoseconds since boot
+/// 读取自启动以来的纳秒数
 #[inline]
 pub fn read_time_ns() -> u64 {
     monotonic_time_nanos()
 }
 
-// ============================================================================
-// Wall time (since Unix epoch)
-// ============================================================================
+// 实时时间（Unix 纪元以来）
 
-/// Get wall time in nanoseconds since Unix epoch
+/// 获取 Unix 纪元以来的实时时间（纳秒）
 #[inline]
 pub fn wall_time_nanos() -> u64 {
     arch::wall_time_nanos()
 }
 
-/// Get wall time as Duration since Unix epoch
+/// 获取 Unix 纪元以来的实时时间（Duration）
 #[inline]
 pub fn wall_time() -> Duration {
     Duration::from_nanos(wall_time_nanos())
 }
 
-/// Get epoch offset in nanoseconds
+/// 获取纪元偏移（纳秒）
 #[inline]
 pub fn epochoffset_nanos() -> u64 {
     arch::epochoffset_nanos()
 }
 
-// ============================================================================
-// Busy waiting
-// ============================================================================
+// 忙等
 
-/// Busy wait for the given duration
+/// 忙等指定时长
 pub fn busy_wait(dur: Duration) {
     let deadline = monotonic_time() + dur;
     busy_wait_until(deadline);
 }
 
-/// Busy wait until reaching the given deadline (monotonic time)
+/// 忙等直到到达指定截止时间（单调时间）
 pub fn busy_wait_until(deadline: Duration) {
     while monotonic_time() < deadline {
         core::hint::spin_loop();
     }
 }
 
-// ============================================================================
-// Compatibility traits
-// ============================================================================
+// 兼容 trait
 
-/// Trait to convert time types to clock ticks
+/// 将时间类型转换为时钟 ticks 的 trait
 pub trait ToClock {
     fn to_clock(&self) -> usize;
 }
 
-/// Trait to get current time
+/// 获取当前时间的 trait
 pub trait TimeNow {
     fn now() -> Self;
 }

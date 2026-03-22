@@ -10,33 +10,29 @@ use crate::{Basic, DeviceBase};
 #[proxy(NetDeviceDomainProxy,RwLock, Range<usize>)]
 pub trait NetDeviceDomain: DeviceBase + Basic + DowncastSync {
     fn init(&self, device_info: &Range<usize>) -> AlienResult<()>;
-    /// The ethernet address of the NIC.
+    /// 网卡的 MAC 地址。
     fn mac_address(&self) -> AlienResult<[u8; 6]>;
 
-    /// Whether can transmit packets.
+    /// 是否可发送数据包。
     fn can_transmit(&self) -> AlienResult<bool>;
 
-    /// Whether can receive packets.
+    /// 是否可接收数据包。
     fn can_receive(&self) -> AlienResult<bool>;
 
-    /// Size of the receive queue.
+    /// 接收队列大小。
     fn rx_queue_size(&self) -> AlienResult<usize>;
 
-    /// Size of the transmit queue.
+    /// 发送队列大小。
     fn tx_queue_size(&self) -> AlienResult<usize>;
 
-    /// Transmits a packet in the buffer to the network, without blocking,
-    /// returns [`DevResult`].
+    /// 非阻塞发送缓冲区中的数据包。
     fn transmit(&self, tx_buf: &DVec<u8>) -> AlienResult<()>;
 
-    /// Receives a packet from the network and store it in the [`NetBuf`],
-    /// returns the buffer.
+    /// 从网络接收一个数据包并写入缓冲区，返回该缓冲区及长度。
     ///
-    /// Before receiving, the driver should have already populated some buffers
-    /// in the receive queue by [`NetDriverOps::recycle_rx_buffer`].
+    /// 接收前，驱动应先把若干可用缓冲区放入接收队列。
     ///
-    /// If currently no incomming packets, returns an error with type
-    /// [`DevError::Again`].
+    /// 若当前没有到达数据包，应返回“稍后重试”类错误。
     fn receive(&self, rx_buf: DVec<u8>) -> AlienResult<(DVec<u8>, usize)>;
 }
 

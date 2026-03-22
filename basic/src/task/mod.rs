@@ -1,9 +1,8 @@
-//! Task context and trap frame definitions
+//! 任务上下文与陷阱帧定义
 //!
-//! Architecture-specific trap frame implementations.
-//! Each architecture uses its native naming conventions.
+//! 提供按架构实现的陷阱帧，并统一对外接口。
 
-// Compile-time check: ensure valid architecture
+// 编译期检查：仅支持 riscv64 与 x86_64
 #[cfg(not(any(target_arch = "riscv64", target_arch = "x86_64")))]
 compile_error!("Unsupported architecture! Only riscv64 and x86_64 are supported.");
 
@@ -32,29 +31,27 @@ impl TaskContextExt for TaskContext {
     }
 }
 
-// ============================================================================
-// RISC-V TrapFrame
-// ============================================================================
+// RISC-V 陷阱帧
 
 #[cfg(target_arch = "riscv64")]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TrapFrame {
-    /// General purpose registers x0-x31
+    /// 通用寄存器 x0-x31
     x: [usize; 32],
-    /// Supervisor exception program counter
+    /// S 态异常返回地址
     sepc: usize,
-    /// Kernel SATP value
+    /// 内核页表令牌
     k_satp: usize,
-    /// Kernel stack pointer
+    /// 内核栈指针
     k_sp: usize,
-    /// Trap handler address
+    /// 陷阱处理入口地址
     trap_handler: usize,
-    /// Hart ID
-    hart_id: usize,
-    /// Supervisor status (using unified ProcessorStatus type)
+    /// CPU 编号
+    cpu_id: usize,
+    /// S 态状态（统一 ProcessorStatus 类型）
     pub sstatus: ProcessorStatus,
-    /// Floating point status
+    /// 浮点状态
     fg: [usize; 2],
 }
 
@@ -77,21 +74,21 @@ impl TrapFrame {
             k_satp,
             k_sp,
             trap_handler,
-            hart_id: 0,
+            cpu_id: 0,
             sstatus,
             fg: [0; 2],
         };
-        res.x[2] = sp; // sp register
+        res.x[2] = sp; // sp 寄存器
         res
     }
 
     pub fn new_user(entry: VirtAddr, sp: VirtAddr, k_sp: VirtAddr) -> Self {
-        let kernel_satp = corelib::kernel_satp();
+        let kernel_page_table_token = corelib::kernel_page_table_token();
         let user_trap_vector = corelib::trap_from_user();
         Self::init_for_task(
             entry.as_usize(),
             sp.as_usize(),
-            kernel_satp,
+            kernel_page_table_token,
             k_sp.as_usize(),
             user_trap_vector,
         )
@@ -132,7 +129,7 @@ impl TrapFrame {
     }
 }
 
-// x86_64 trap上下文
+// x86_64 陷阱帧
 #[cfg(target_arch = "x86_64")]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -141,14 +138,14 @@ pub struct TrapFrame {
     k_cr3: usize,
     k_sp: usize,
 
-    // Callee-saved registers
+    // 被调用者保存寄存器
     pub r15: usize,
     pub r14: usize,
     pub r13: usize,
     pub r12: usize,
     pub rbp: usize,
     pub rbx: usize,
-    // Scratch registers
+    // 临时寄存器
     pub r11: usize,
     pub r10: usize,
     pub r9: usize,
@@ -158,7 +155,7 @@ pub struct TrapFrame {
     pub rdx: usize,
     pub rcx: usize,
     pub rax: usize,
-    // Pushed by CPU on interrupt/exception
+    // CPU 在中断/异常时自动压栈的部分
     pub vector: usize,
     pub error_code: usize,
     pub rip: usize,
@@ -214,11 +211,11 @@ impl TrapFrame {
     }
 
     pub fn new_user(entry: VirtAddr, sp: VirtAddr, k_sp: VirtAddr) -> Self {
-        let kernel_satp = corelib::kernel_satp();
+        let kernel_page_table_token = corelib::kernel_page_table_token();
         Self::init_for_task(
             entry.as_usize(),
             sp.as_usize(),
-            kernel_satp,
+            kernel_page_table_token,
             k_sp.as_usize(),
         )
     }
@@ -236,8 +233,8 @@ impl TrapFrame {
     }
 
     pub fn update_tp(&mut self, val: VirtAddr) {
-        // x86-64 uses fs/gs for TLS, not a general register
-        // For now, store in r15 as a placeholder
+        // x86-64 用 fs/gs 承载 TLS，不使用通用寄存器。
+        // 当前先临时写入 r15 占位。
         self.r15 = val.as_usize();
     }
 
@@ -257,8 +254,8 @@ impl TrapFrame {
         unsafe { &mut *(ptr.as_usize() as *mut usize as *mut Self) }
     }
 
-    /// Get syscall parameters
-    /// x86-64 syscall convention: rax=syscall#, rdi, rsi, rdx, r10, r8, r9
+    /// 获取系统调用参数
+    /// x86-64 调用约定：rax=号，rdi/rsi/rdx/r10/r8/r9 为参数
     pub fn parameters(&self) -> [usize; 7] {
         [
             self.rax, self.rdi, self.rsi, self.rdx, self.r10, self.r8, self.r9,

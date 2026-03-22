@@ -12,29 +12,17 @@ use riscv::register::satp;
 
 // ==================== CPU 标识 ====================
 
-/// 获取当前 hart ID。
+/// 获取当前 CPU ID。
 #[inline(always)]
-pub fn hart_id() -> usize {
+pub fn cpu_id() -> usize {
     let mut id: usize;
     unsafe {
         asm!(
         "mv {},tp", out(reg)id,
         );
     }
-    // tp 低 32 位保存 hart id。
+    // tp 低 32 位保存 CPU id。
     id as u32 as usize
-}
-
-/// 获取当前 CPU ID（hart_id 别名）。
-#[inline(always)]
-pub fn cpu_id() -> usize {
-    hart_id()
-}
-
-/// 获取当前 CPU ID（hart_id 别名）。
-#[inline(always)]
-pub fn current_cpu_id() -> usize {
-    hart_id()
 }
 
 // ==================== 中断控制 ====================
@@ -174,12 +162,10 @@ pub fn wall_time_nanos() -> u64 {
 // ==================== 分页相关 ====================
 
 /// 激活页表（Sv39）。
-pub fn activate_paging_mode(root_ppn: usize) {
-    unsafe {
-        sfence_vma_all();
-        satp::set(satp::Mode::Sv39, 0, root_ppn);
-        sfence_vma_all();
-    }
+pub fn activate_paging_mode(page_table_token: usize) {
+    sfence_vma_all();
+    satp::write(page_table_token);
+    sfence_vma_all();
 }
 
 /// 刷新全部 TLB。

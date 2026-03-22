@@ -8,8 +8,9 @@ use crate::{Basic, DeviceBase};
 
 #[proxy(InputDomainProxy,RwLock,Range<usize>)]
 pub trait InputDomain: DeviceBase + Basic + DowncastSync {
+    /// 初始化输入设备域
     fn init(&self, device_info: &Range<usize>) -> AlienResult<()>;
-    /// Read an input event from the input device
+    /// 非阻塞读取一个输入事件
     fn event_nonblock(&self) -> AlienResult<Option<u64>>;
     // fn event_block(&self) -> AlienResult<u64>;
     // fn have_event(&self) -> AlienResult<bool>;

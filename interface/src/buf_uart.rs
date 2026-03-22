@@ -8,14 +8,14 @@ use crate::{Basic, DeviceBase};
 #[proxy(BufUartDomainProxy, RwLock, String)]
 pub trait BufUartDomain: DeviceBase + Basic + DowncastSync {
     fn init(&self, uart_domain_name: &str) -> AlienResult<()>;
-    /// Write a character to the UART
+    /// 向 UART 写入一个字符
     fn putc(&self, ch: u8) -> AlienResult<()>;
-    /// Read a character from the UART
+    /// 从 UART 读取一个字符
     fn getc(&self) -> AlienResult<Option<u8>>;
     fn put_bytes(&self, buf: &DVec<u8>) -> AlienResult<usize>;
-    /// Check if there is data to get from the UART
+    /// 检查 UART 是否有数据可读
     fn have_data_to_get(&self) -> AlienResult<bool>;
-    /// Check if there is space to put data to the UART
+    /// 检查 UART 是否有空间可写
     fn have_space_to_put(&self) -> AlienResult<bool> {
         Ok(true)
     }

@@ -13,11 +13,11 @@ pub const VFS_STDOUT_ID: InodeID = 2;
 pub const VFS_STDERR_ID: InodeID = 3;
 
 pub struct DirEntryWrapper {
-    /// ino is an inode number
+    /// ino 是 inode 编号
     pub ino: u64,
-    /// type is the file type
+    /// ty 表示文件类型
     pub ty: VfsNodeType,
-    /// filename (null-terminated)
+    /// 文件名（以 NUL 结尾）
     pub name: [u8; 64],
     pub name_len: usize,
 }
@@ -74,7 +74,7 @@ pub trait VfsDomain: Basic + DowncastSync {
     fn vfs_inode_type(&self, inode: InodeID) -> AlienResult<VfsNodeType>;
     fn vfs_readdir(&self, inode: InodeID, buf: DVec<u8>) -> AlienResult<(DVec<u8>, usize)>;
     fn vfs_get_path(&self, inode: InodeID, buf: DVec<u8>) -> AlienResult<(DVec<u8>, usize)>;
-    /// truncate the file to len
+    /// 将文件截断到指定长度
     fn vfs_ftruncate(&self, inode: InodeID, len: u64) -> AlienResult<()>;
     fn vfs_update_atime(&self, inode: InodeID, atime_sec: u64, atime_nano: u64) -> AlienResult<()>;
     fn vfs_update_mtime(&self, inode: InodeID, mtime_sec: u64, mtime_nano: u64) -> AlienResult<()>;
@@ -98,9 +98,9 @@ pub trait VfsDomain: Basic + DowncastSync {
     ) -> AlienResult<()>;
     fn do_fcntl(&self, inode: InodeID, cmd: usize, args: usize) -> AlienResult<isize>;
     fn do_pipe2(&self, flags: usize) -> AlienResult<(InodeID, InodeID)>;
-    /// Create a socket and return the inode id
+    /// 创建 socket 并返回对应的 inode id
     fn do_socket(&self, socket_id: SocketID) -> AlienResult<InodeID>;
-    /// Get the socket id from inode id
+    /// 从 inode id 获取 socket id
     fn socket_id(&self, inode: InodeID) -> AlienResult<SocketID>;
     fn do_poll_create(&self, flags: usize) -> AlienResult<InodeID>;
     fn do_poll_ctl(

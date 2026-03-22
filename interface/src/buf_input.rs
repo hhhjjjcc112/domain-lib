@@ -7,7 +7,7 @@ use crate::{Basic, DeviceBase};
 #[proxy(BufInputDomainProxy, RwLock, String)]
 pub trait BufInputDomain: DeviceBase + Basic + DowncastSync {
     fn init(&self, input_domain_name: &str) -> AlienResult<()>;
-    /// Read an input event from the input device
+    /// 从输入设备读取一个输入事件
     fn event_block(&self) -> AlienResult<u64>;
     fn event_nonblock(&self) -> AlienResult<Option<u64>>;
     fn have_event(&self) -> AlienResult<bool>;

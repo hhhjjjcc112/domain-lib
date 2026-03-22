@@ -80,7 +80,7 @@ pub trait CoreFunction: Send + Sync {
     fn sys_write_console(&self, s: &str);
     fn sys_backtrace(&self, domain_id: u64);
     fn sys_trampoline_addr(&self) -> usize;
-    fn sys_kernel_satp(&self) -> usize;
+    fn sys_kernel_page_table_token(&self) -> usize;
     fn sys_trap_from_user(&self) -> usize;
     fn sys_trap_to_user(&self) -> usize;
     /// This func will be deleted
@@ -164,11 +164,11 @@ mod core_impl {
         *TRAMPOLINE_ADDR.get_must()
     }
 
-    pub fn kernel_satp() -> usize {
-        static SATP: Once<usize> = Once::new();
+    pub fn kernel_page_table_token() -> usize {
+        static PAGE_TABLE_TOKEN: Once<usize> = Once::new();
 
-        SATP.call_once(|| CORE_FUNC.get_must().sys_kernel_satp());
-        *SATP.get_must()
+        PAGE_TABLE_TOKEN.call_once(|| CORE_FUNC.get_must().sys_kernel_page_table_token());
+        *PAGE_TABLE_TOKEN.get_must()
     }
 
     pub fn trap_from_user() -> usize {
@@ -229,7 +229,7 @@ mod core_impl {
 
     #[inline(always)]
     #[cfg(target_arch = "riscv64")]
-    fn current_tid_from_tp() -> Option<usize> {
+    fn current_tid_from_thread_pointer() -> Option<usize> {
         let mut tp: usize;
         unsafe {
             core::arch::asm!(
@@ -247,8 +247,8 @@ mod core_impl {
 
     #[inline(always)]
     #[cfg(target_arch = "x86_64")]
-    fn current_tid_from_tp() -> Option<usize> {
-        // x86-64 does not use RISC-V tp semantics in this project path.
+    fn current_tid_from_thread_pointer() -> Option<usize> {
+        // x86-64 在该路径下不通过线程指针推导 tid。
         None
     }
     #[inline(always)]
@@ -257,7 +257,7 @@ mod core_impl {
         //     .get_must()
         //     .task_op(TaskOperation::Current)
         //     .map(|res| res.current_tid())
-        Ok(current_tid_from_tp())
+        Ok(current_tid_from_thread_pointer())
     }
     /// return kstack top
     pub fn add_one_task(task_meta: TaskMeta) -> AlienResult<usize> {

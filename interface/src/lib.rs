@@ -254,9 +254,9 @@ mod __impl {
     use core::{hint::spin_loop, sync::atomic::AtomicBool};
 
     static ACTIVE: AtomicBool = AtomicBool::new(false);
-    /// Activate the domain
+    /// 激活当前域。
     ///
-    /// It should be called in the `main` function of the domain.
+    /// 应在域的 `main` 函数中调用。
     pub fn activate_domain() {
         ACTIVE.store(true, core::sync::atomic::Ordering::Relaxed);
     }
@@ -265,10 +265,10 @@ mod __impl {
         ACTIVE.load(core::sync::atomic::Ordering::Relaxed)
     }
 
-    /// Deactivate the domain
+    /// 关闭当前域。
     ///
-    /// It should be called in the `panic` function of the domain it should block the thread which
-    /// calls this function when the `ACTIVE` flag is false.
+    /// 应在域的 `panic` 路径中调用。
+    /// 当 `ACTIVE` 为 false 时，调用线程会在此等待。
     pub fn deactivate_domain() {
         while !ACTIVE.swap(false, core::sync::atomic::Ordering::Relaxed) {
             spin_loop();

@@ -1,69 +1,48 @@
-//! Architecture abstraction helpers
+//! 架构抽象辅助工具
 //!
-//! Provides architecture-neutral CPU-related utilities.
+//! 提供与架构无关的 CPU 相关能力。
 
 use core::{
     cell::UnsafeCell,
     ops::{Deref, DerefMut},
 };
 
-// ============================================================================
-// CPU ID functions
-// ============================================================================
+// CPU ID 接口
 
-/// Get current CPU ID (unified interface)
-#[inline(always)]
-pub fn cpu_id() -> usize {
-    arch::cpu_id()
-}
+/// 获取当前 CPU 编号（统一接口）
+pub use arch::cpu_id;
 
-/// Get current CPU ID (RISC-V compatibility alias)
-#[inline(always)]
-pub fn hart_id() -> usize {
-    arch::cpu_id()
-}
+// Per-CPU 数据结构
 
-/// Get current CPU ID (x86-64 compatibility alias)
-#[inline(always)]
-pub fn apic_id() -> usize {
-    arch::cpu_id()
-}
-
-// ============================================================================
-// Per-CPU data structure
-// ============================================================================
-
-/// Per-CPU local data wrapper
+/// Per-CPU 本地数据包装
 /// 
-/// This type provides per-CPU data storage without requiring atomic operations,
-/// as each CPU only accesses its own instance.
+/// 该类型提供每核独占的数据存储，不依赖原子操作。
 pub struct CpuLocal<T>(UnsafeCell<T>);
 
-/// Safety: Each CPU only accesses its own CpuLocal instance
+/// 安全性：每个 CPU 只访问自己的 CpuLocal 实例
 unsafe impl<T> Sync for CpuLocal<T> {}
 
 impl<T> CpuLocal<T> {
-    /// Create a new CpuLocal with the given initial value
+    /// 用给定初值创建 CpuLocal
     pub const fn new(value: T) -> Self {
         Self(UnsafeCell::new(value))
     }
 
-    /// Get a mutable reference to the inner value
+    /// 获取内部值的可变引用
     /// 
     /// # Safety
-    /// This is safe as long as interrupts are disabled or the caller
-    /// ensures no concurrent access from the same CPU.
+    /// 只要中断关闭，或调用方保证同核无并发访问，即可安全使用。
     #[allow(clippy::mut_from_ref)]
     pub fn as_mut(&self) -> &mut T {
         unsafe { &mut *self.0.get() }
     }
     
-    /// Get an immutable reference to the inner value
+    /// 获取内部值的不可变引用
     pub fn get(&self) -> &T {
         unsafe { &*self.0.get() }
     }
     
-    /// Get a raw pointer to the inner value
+    /// 获取内部值的裸指针
     pub fn as_ptr(&self) -> *mut T {
         self.0.get()
     }
@@ -83,37 +62,9 @@ impl<T> DerefMut for CpuLocal<T> {
     }
 }
 
-// ============================================================================
-// Architecture detection
-// ============================================================================
+// 内存屏障工具
 
-/// Check if running on RISC-V architecture
-#[cfg(target_arch = "riscv64")]
-pub const fn is_riscv() -> bool {
-    true
-}
-
-#[cfg(not(target_arch = "riscv64"))]
-pub const fn is_riscv() -> bool {
-    false
-}
-
-/// Check if running on x86-64 architecture
-#[cfg(target_arch = "x86_64")]
-pub const fn is_x86_64() -> bool {
-    true
-}
-
-#[cfg(not(target_arch = "x86_64"))]
-pub const fn is_x86_64() -> bool {
-    false
-}
-
-// ============================================================================
-// Memory barrier utilities
-// ============================================================================
-
-/// Full memory barrier
+/// 全内存屏障
 #[inline(always)]
 pub fn memory_barrier() {
     #[cfg(target_arch = "riscv64")]
@@ -127,7 +78,7 @@ pub fn memory_barrier() {
     }
 }
 
-/// Read memory barrier
+/// 读屏障
 #[inline(always)]
 pub fn read_barrier() {
     #[cfg(target_arch = "riscv64")]
@@ -141,7 +92,7 @@ pub fn read_barrier() {
     }
 }
 
-/// Write memory barrier
+/// 写屏障
 #[inline(always)]
 pub fn write_barrier() {
     #[cfg(target_arch = "riscv64")]
@@ -155,7 +106,7 @@ pub fn write_barrier() {
     }
 }
 
-/// Compiler barrier (prevents compiler reordering)
+/// 编译器屏障（禁止编译器重排）
 #[inline(always)]
 pub fn compiler_barrier() {
     core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);

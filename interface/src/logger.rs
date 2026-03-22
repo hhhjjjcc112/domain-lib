@@ -17,52 +17,43 @@ impl_downcast!(sync LogDomain);
 #[repr(usize)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub enum Level {
-    /// The "error" level.
+    /// `error` 级别。
     ///
-    /// Designates very serious errors.
-    // This way these line up with the discriminants for LevelFilter below
-    // This works because Rust treats field-less enums the same way as C does:
-    // https://doc.rust-lang.org/reference/items/enumerations.html#custom-discriminant-values-for-field-less-enumerations
+    /// 表示严重错误。
+    // 这里与 LevelFilter 的判别值保持对齐。
     Error = 1,
-    /// The "warn" level.
+    /// `warn` 级别。
     ///
-    /// Designates hazardous situations.
+    /// 表示潜在风险。
     Warn,
-    /// The "info" level.
+    /// `info` 级别。
     ///
-    /// Designates useful information.
+    /// 表示常规信息。
     Info,
-    /// The "debug" level.
+    /// `debug` 级别。
     ///
-    /// Designates lower priority information.
+    /// 表示调试信息。
     Debug,
-    /// The "trace" level.
+    /// `trace` 级别。
     ///
-    /// Designates very low priority, often extremely verbose, information.
+    /// 表示最细粒度的跟踪信息。
     Trace,
 }
 
-/// An enum representing the available verbosity level filters of the logger.
-///
-/// A `LevelFilter` may be compared directly to a [`Level`]. Use this type
-/// to get and set the maximum log level with [`max_level()`] and [`set_max_level`].
-///
-/// [`Level`]: enum.Level.html
-/// [`max_level()`]: fn.max_level.html
-/// [`set_max_level`]: fn.set_max_level.html
+/// 日志过滤级别枚举。
 #[repr(usize)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub enum LevelFilter {
-    /// A level lower than all log levels.
+    /// 关闭所有日志。
     Off,
-    /// Corresponds to the `Error` log level.
+    /// 对应 `Error`。
     Error,
-    /// Corresponds to the `Warn` log level.
+    /// 对应 `Warn`。
     Warn,
-    /// Corresponds to the `Info` log level.
+    /// 对应 `Info`。
     Info,
-    /// Corresponds to the `Debug` log level.
+    /// 对应 `Debug`。
     Debug,
-    /// Corresponds to the `Trace` log level.
+    /// 对应 `Trace`。
     Trace,
 }

@@ -9,9 +9,9 @@ use crate::Basic;
 #[proxy(SchedulerDomainProxy, RwLock)]
 pub trait SchedulerDomain: Basic + DowncastSync {
     fn init(&self) -> AlienResult<()>;
-    /// add one task to scheduler
+    /// 向调度器添加一个任务
     fn add_task(&self, scheduling_info: DBox<TaskSchedulingInfo>) -> AlienResult<()>;
-    /// The next task to run
+    /// 选择下一个要运行的任务
     fn fetch_task(&self, info: DBox<TaskSchedulingInfo>) -> AlienResult<DBox<TaskSchedulingInfo>>;
 }
 

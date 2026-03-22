@@ -5,15 +5,12 @@
 static CPU_ID: usize = 0;
 
 
-use core::arch::{asm, x86_64::_rdtsc};
+use core::arch::x86_64::_rdtsc;
 use core::sync::atomic::{AtomicU64, Ordering};
 use raw_cpuid::CpuId;
 use x86_64::{
     instructions::{interrupts, hlt},
-    registers::{
-        rflags, control,
-        model_specific::Msr,
-    },
+    registers::{control, rflags},
 };
 
 
@@ -38,23 +35,6 @@ pub fn cpu_id() -> usize {
     CPU_ID.read_current()
 }
 
-/// Get Local APIC ID (alias for cpu_id)
-#[inline(always)]
-pub fn apic_id() -> usize {
-    cpu_id()
-}
-
-/// Get current CPU ID
-#[inline(always)]
-pub fn current_cpu_id() -> usize {
-    cpu_id()
-}
-
-#[inline(always)]
-pub fn hart_id() -> usize {
-    cpu_id()
-}
-
 /// 初始化BSP的percpu，并写入当前CPU ID。
 ///
 /// 需在 clear_bss() 之后调用。
@@ -77,9 +57,9 @@ pub fn init_percpu_secondary(cpu_id: usize) {
 /// 实际常用 Ring 0 与 Ring 3。
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PrivilegeLevel {
-    /// Ring 3 - User mode
+    /// Ring 3 - 用户态
     User = 3,
-    /// Ring 0 - Kernel mode (Supervisor)
+    /// Ring 0 - 内核态（特权态）
     Kernel = 0,
 }
 
@@ -102,39 +82,39 @@ impl PrivilegeLevel {
 
 /// RFLAGS 位定义。
 pub mod rflags_bits {
-    /// Carry Flag
+    /// 进位标志
     pub const CF: usize = 1 << 0;
-    /// Parity Flag
+    /// 奇偶标志
     pub const PF: usize = 1 << 2;
-    /// Auxiliary Carry Flag
+    /// 辅助进位标志
     pub const AF: usize = 1 << 4;
-    /// Zero Flag
+    /// 零标志
     pub const ZF: usize = 1 << 6;
-    /// Sign Flag
+    /// 符号标志
     pub const SF: usize = 1 << 7;
-    /// Trap Flag (single step)
+    /// 陷阱标志（单步）
     pub const TF: usize = 1 << 8;
-    /// Interrupt Enable Flag
+    /// 中断使能标志
     pub const IF: usize = 1 << 9;
-    /// Direction Flag
+    /// 方向标志
     pub const DF: usize = 1 << 10;
-    /// Overflow Flag
+    /// 溢出标志
     pub const OF: usize = 1 << 11;
-    /// I/O Privilege Level (bits 12-13)
+    /// I/O 特权级（12-13 位）
     pub const IOPL_MASK: usize = 0x3 << 12;
-    /// Nested Task
+    /// 嵌套任务标志
     pub const NT: usize = 1 << 14;
-    /// Resume Flag
+    /// 恢复标志
     pub const RF: usize = 1 << 16;
-    /// Virtual 8086 Mode
+    /// 虚拟 8086 模式
     pub const VM: usize = 1 << 17;
-    /// Alignment Check
+    /// 对齐检查
     pub const AC: usize = 1 << 18;
-    /// Virtual Interrupt Flag
+    /// 虚拟中断标志
     pub const VIF: usize = 1 << 19;
-    /// Virtual Interrupt Pending
+    /// 虚拟中断挂起
     pub const VIP: usize = 1 << 20;
-    /// ID Flag (CPUID available)
+    /// ID 标志（支持 CPUID）
     pub const ID: usize = 1 << 21;
 }
 
@@ -255,42 +235,38 @@ impl Rflags {
     }
 }
 
-// ============================================================================
-// Interrupt control
-// ============================================================================
+// 中断控制
 
-/// Check if interrupts are enabled
+/// 检查中断是否开启
 pub fn is_interrupt_enable() -> bool {
     rflags::read().contains(rflags::RFlags::INTERRUPT_FLAG)
 }
 
-/// Disable interrupts
+/// 关闭中断
 #[inline(always)]
 pub fn interrupt_disable() {
     interrupts::disable();
 }
 
-/// Enable interrupts
+/// 开启中断
 #[inline(always)]
 pub fn interrupt_enable() {
     interrupts::enable();
 }
 
-/// Enable external interrupts (no-op on x86, handled by APIC/PIC)
+/// 开启外部中断（x86 下为空实现，由 APIC/PIC 负责）
 pub fn external_interrupt_enable() {}
 
-/// Enable software interrupts (no-op on x86)
+/// 开启软件中断（x86 下为空实现）
 pub fn software_interrupt_enable() {}
 
-/// Disable external interrupts (no-op on x86, handled by APIC/PIC)
+/// 关闭外部中断（x86 下为空实现，由 APIC/PIC 负责）
 pub fn external_interrupt_disable() {}
 
-/// Enable timer interrupts (no-op on x86, handled by APIC timer setup)
+/// 开启时钟中断（x86 下为空实现，由 APIC 定时器负责）
 pub fn timer_interrupt_enable() {}
 
-// ============================================================================
-// Time and TSC
-// ============================================================================
+// 时间与 TSC
 
 /// TSC frequency in Hz (calibrated at runtime)
 static TSC_FREQ_HZ: AtomicU64 = AtomicU64::new(4_000_000_000);
@@ -377,12 +353,11 @@ pub fn wall_time_nanos() -> u64 {
 }
 
 /// Activate paging mode by setting CR3
-pub fn activate_paging_mode(root_ppn: usize) {
-    let root_paddr = root_ppn << 12;
+pub fn activate_paging_mode(page_table_token: usize) {
     unsafe {
         control::Cr3::write(
             x86_64::structures::paging::PhysFrame::containing_address(
-                x86_64::PhysAddr::new(root_paddr as u64)
+                x86_64::PhysAddr::new(page_table_token as u64)
             ),
             control::Cr3Flags::empty()
         );
@@ -408,9 +383,7 @@ pub fn allow_access_user_memory() {}
 /// Disallow access to user memory - no-op without SMAP
 pub fn disallow_access_user_memory() {}
 
-// ============================================================================
-// TSC Frequency Calibration (arceos style)
-// ============================================================================
+// TSC 频率校准（参考 arceos）
 
 /// Calibrate TSC frequency using CPUID if available
 /// 
@@ -453,29 +426,27 @@ pub fn init_tsc() {
     init_tsc_baseline();
 }
 
-// ============================================================================
-// Control Registers
-// ============================================================================
+// 控制寄存器
 
-/// Read CR0 register
+/// 读取 CR0
 pub fn read_cr0() -> usize {
     control::Cr0::read().bits() as usize
 }
 
-/// Read CR2 register (page fault linear address)
+/// 读取 CR2（页故障线性地址）
 pub fn read_cr2() -> usize {
     control::Cr2::read()
         .map(|addr| addr.as_u64() as usize)
         .unwrap_or(0)
 }
 
-/// Read CR3 register (page table base)
+/// 读取 CR3（页表基址）
 pub fn read_cr3() -> usize {
     let (frame, _) = control::Cr3::read();
     frame.start_address().as_u64() as usize
 }
 
-/// Write CR3 register
+/// 写入 CR3
 pub fn write_cr3(value: usize) {
     unsafe {
         control::Cr3::write(
@@ -487,43 +458,14 @@ pub fn write_cr3(value: usize) {
     }
 }
 
-/// Read CR4 register
+/// 读取 CR4
 pub fn read_cr4() -> usize {
     control::Cr4::read().bits() as usize
 }
 
-// ============================================================================
-// MSR (Model Specific Registers)
-// ============================================================================
+// CPU 特性检测
 
-/// Read MSR register
-pub fn read_msr(msr: u32) -> u64 {
-    unsafe {
-        Msr::new(msr).read()
-    }
-}
-
-/// Write MSR register
-pub fn write_msr(msr: u32, value: u64) {
-    unsafe {
-        Msr::new(msr).write(value);
-    }
-}
-
-/// EFER MSR address
-pub const MSR_EFER: u32 = 0xC0000080;
-/// FS base MSR address
-pub const MSR_FS_BASE: u32 = 0xC0000100;
-/// GS base MSR address
-pub const MSR_GS_BASE: u32 = 0xC0000101;
-/// Kernel GS base MSR address (for swapgs)
-pub const MSR_KERNEL_GS_BASE: u32 = 0xC0000102;
-
-// ============================================================================
-// CPU Features Detection
-// ============================================================================
-
-/// Check if CPU supports x2APIC
+/// 检查 CPU 是否支持 x2APIC
 pub fn has_x2apic() -> bool {
     CpuId::new()
         .get_feature_info()
@@ -531,7 +473,7 @@ pub fn has_x2apic() -> bool {
         .unwrap_or(false)
 }
 
-/// Check if CPU supports FSGSBASE instructions
+/// 检查 CPU 是否支持 FSGSBASE 指令
 pub fn has_fsgsbase() -> bool {
     CpuId::new()
         .get_extended_feature_info()
@@ -539,7 +481,7 @@ pub fn has_fsgsbase() -> bool {
         .unwrap_or(false)
 }
 
-/// Check if CPU supports SMAP (Supervisor Mode Access Prevention)
+/// 检查 CPU 是否支持 SMAP（特权态访问保护）
 pub fn has_smap() -> bool {
     CpuId::new()
         .get_extended_feature_info()
@@ -547,7 +489,7 @@ pub fn has_smap() -> bool {
         .unwrap_or(false)
 }
 
-/// Check if CPU supports SMEP (Supervisor Mode Execution Prevention)
+/// 检查 CPU 是否支持 SMEP（特权态执行保护）
 pub fn has_smep() -> bool {
     CpuId::new()
         .get_extended_feature_info()
@@ -555,7 +497,7 @@ pub fn has_smep() -> bool {
         .unwrap_or(false)
 }
 
-/// Get CPU vendor string
+/// 获取 CPU 厂商字符串
 pub fn cpu_vendor() -> Option<&'static str> {
     CpuId::new().get_vendor_info().map(|v| {
         // Return a static reference by matching known vendors
@@ -567,33 +509,27 @@ pub fn cpu_vendor() -> Option<&'static str> {
     })
 }
 
-// ============================================================================
-// Halt and Pause
-// ============================================================================
+// 停机与自旋提示
 
-/// Halt the CPU until the next interrupt
+/// 挂起 CPU，直到下一次中断
 #[inline(always)]
 pub fn halt() {
     hlt();
 }
 
-/// Pause instruction (spin-loop hint)
+/// 自旋提示指令
 #[inline(always)]
 pub fn pause() {
-    unsafe {
-        asm!("pause", options(nomem, nostack));
-    }
+    core::hint::spin_loop();
 }
 
-/// Wait for interrupt (halt wrapper)
+/// 等待中断（halt 封装）
 #[inline(always)]
 pub fn wfi() {
     halt();
 }
 
-// ============================================================================
 // FPU / SSE 初始化
-// ============================================================================
 
 /// 初始化 FPU/SSE 支持。
 ///
@@ -604,20 +540,21 @@ pub fn wfi() {
 /// - 执行 FNINIT 重置 x87 FPU 到默认状态
 pub fn init_fpu() {
     unsafe {
-        let mut cr0: usize;
-        asm!("mov {}, cr0", out(reg) cr0, options(nomem, nostack, preserves_flags));
-        cr0 &= !(1 << 2); // 清 EM
-        cr0 |= 1 << 1;    // 设 MP
-        cr0 &= !(1 << 3); // 清 TS
-        asm!("mov cr0, {}", in(reg) cr0, options(nomem, nostack, preserves_flags));
+        // CR0: 清 EM/TS，置 MP。
+        let mut cr0 = control::Cr0::read();
+        cr0.remove(control::Cr0Flags::EMULATE_COPROCESSOR);
+        cr0.insert(control::Cr0Flags::MONITOR_COPROCESSOR);
+        cr0.remove(control::Cr0Flags::TASK_SWITCHED);
+        control::Cr0::write(cr0);
 
-        let mut cr4: usize;
-        asm!("mov {}, cr4", out(reg) cr4, options(nomem, nostack, preserves_flags));
-        cr4 |= 1 << 9;  // OSFXSR
-        cr4 |= 1 << 10; // OSXMMEXCPT
-        asm!("mov cr4, {}", in(reg) cr4, options(nomem, nostack, preserves_flags));
+        // CR4: 置 OSFXSR/OSXMMEXCPT。
+        let mut cr4 = control::Cr4::read();
+        cr4.insert(control::Cr4Flags::OSFXSR);
+        cr4.insert(control::Cr4Flags::OSXMMEXCPT_ENABLE);
+        control::Cr4::write(cr4);
 
-        asm!("fninit", options(nomem, nostack, preserves_flags));
+        // 保留 x87 初始化。
+        core::arch::asm!("fninit", options(nomem, nostack, preserves_flags));
     }
 }
 
