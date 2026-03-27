@@ -10,6 +10,7 @@ mod input_device;
 mod logger;
 mod net;
 mod net_device;
+mod apic;
 mod plic;
 mod rtc;
 mod scheduler;
@@ -60,6 +61,7 @@ pub use input_device::*;
 pub use logger::*;
 pub use net::*;
 pub use net_device::*;
+pub use apic::*;
 pub use plic::*;
 pub use rtc::*;
 pub use scheduler::*;
@@ -80,6 +82,7 @@ pub enum DomainType {
     VfsDomain(Arc<dyn VfsDomain>),
     UartDomain(Arc<dyn UartDomain>),
     PLICDomain(Arc<dyn PLICDomain>),
+    APICDomain(Arc<dyn APICDomain>),
     TaskDomain(Arc<dyn TaskDomain>),
     SysCallDomain(Arc<dyn SysCallDomain>),
     ShadowBlockDomain(Arc<dyn ShadowBlockDomain>),
@@ -105,6 +108,7 @@ impl DomainType {
             DomainType::VfsDomain(_) => DomainTypeRaw::VfsDomain,
             DomainType::UartDomain(_) => DomainTypeRaw::UartDomain,
             DomainType::PLICDomain(_) => DomainTypeRaw::PLICDomain,
+            DomainType::APICDomain(_) => DomainTypeRaw::APICDomain,
             DomainType::TaskDomain(_) => DomainTypeRaw::TaskDomain,
             DomainType::SysCallDomain(_) => DomainTypeRaw::SysCallDomain,
             DomainType::ShadowBlockDomain(_) => DomainTypeRaw::ShadowBlockDomain,
@@ -142,6 +146,7 @@ pub enum DomainTypeRaw {
     SchedulerDomain = 18,
     LogDomain = 19,
     NetDomain = 20,
+    APICDomain = 21,
 }
 
 impl Display for DomainTypeRaw {
@@ -167,6 +172,7 @@ impl Display for DomainTypeRaw {
             DomainTypeRaw::SchedulerDomain => write!(f, "SchedulerDomain"),
             DomainTypeRaw::LogDomain => write!(f, "LogDomain"),
             DomainTypeRaw::NetDomain => write!(f, "NetDomain"),
+            DomainTypeRaw::APICDomain => write!(f, "APICDomain"),
         }
     }
 }
@@ -196,6 +202,7 @@ impl TryFrom<u8> for DomainTypeRaw {
             18 => Ok(DomainTypeRaw::SchedulerDomain),
             19 => Ok(DomainTypeRaw::LogDomain),
             20 => Ok(DomainTypeRaw::NetDomain),
+            21 => Ok(DomainTypeRaw::APICDomain),
             _ => Err(()),
         }
     }
@@ -234,6 +241,7 @@ impl DomainType {
             DomainType::VfsDomain(d) => d.domain_id(),
             DomainType::UartDomain(d) => d.domain_id(),
             DomainType::PLICDomain(d) => d.domain_id(),
+            DomainType::APICDomain(d) => d.domain_id(),
             DomainType::TaskDomain(d) => d.domain_id(),
             DomainType::SysCallDomain(d) => d.domain_id(),
             DomainType::ShadowBlockDomain(d) => d.domain_id(),

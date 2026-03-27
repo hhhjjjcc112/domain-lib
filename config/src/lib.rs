@@ -65,6 +65,10 @@ pub const TRAMPOLINE: usize = usize::MAX - 2 * FRAME_SIZE + 1;
 pub const TRAP_CONTEXT_BASE: usize = TRAMPOLINE - FRAME_SIZE;
 #[cfg(target_arch = "x86_64")]
 pub const PERCPU_MIRROR_BASE: usize = TRAMPOLINE - 0x1_0000_0000_00;
+#[cfg(target_arch = "x86_64")]
+pub const LOW_PHYS_MAP_BASE: usize = PERCPU_MIRROR_BASE + 0x20_0000;
+#[cfg(target_arch = "x86_64")]
+pub const LOW_PHYS_MAP_SIZE: usize = 0x10_0000;
 pub const USER_KERNEL_STACK_SIZE: usize = FRAME_SIZE * 16;
 pub const KTHREAD_STACK_SIZE: usize = FRAME_SIZE * 2;
 /// 线程数量大小限制
