@@ -1,15 +1,13 @@
-use core::ops::Range;
-
 use downcast_rs::{impl_downcast, DowncastSync};
 use gproxy::proxy;
 
 use super::AlienResult;
-use crate::{Basic, DeviceBase};
+use crate::{Basic, DeviceBase, VirtioInitInfo};
 
-#[proxy(InputDomainProxy,RwLock,Range<usize>)]
+#[proxy(InputDomainProxy,RwLock,VirtioInitInfo)]
 pub trait InputDomain: DeviceBase + Basic + DowncastSync {
     /// 初始化输入设备域
-    fn init(&self, device_info: &Range<usize>) -> AlienResult<()>;
+    fn init(&self, device_info: &VirtioInitInfo) -> AlienResult<()>;
     /// 非阻塞读取一个输入事件
     fn event_nonblock(&self) -> AlienResult<Option<u64>>;
     // fn event_block(&self) -> AlienResult<u64>;

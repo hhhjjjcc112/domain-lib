@@ -1,15 +1,13 @@
-use core::ops::Range;
-
 use downcast_rs::{impl_downcast, DowncastSync};
 use gproxy::proxy;
 use shared_heap::DVec;
 
 use super::AlienResult;
-use crate::{Basic, DeviceBase};
+use crate::{Basic, DeviceBase, VirtioInitInfo};
 
-#[proxy(NetDeviceDomainProxy,RwLock, Range<usize>)]
+#[proxy(NetDeviceDomainProxy,RwLock, VirtioInitInfo)]
 pub trait NetDeviceDomain: DeviceBase + Basic + DowncastSync {
-    fn init(&self, device_info: &Range<usize>) -> AlienResult<()>;
+    fn init(&self, device_info: &VirtioInitInfo) -> AlienResult<()>;
     /// 网卡的 MAC 地址。
     fn mac_address(&self) -> AlienResult<[u8; 6]>;
 

@@ -16,6 +16,20 @@ impl From<Range<usize>> for SafeIORegion {
 }
 
 impl SafeIORegion {
+    #[inline]
+    fn is_port_io(&self) -> bool {
+        #[cfg(target_arch = "x86_64")]
+        {
+            let start = self.range.start.as_usize();
+            let end = self.range.end.as_usize();
+            return end <= 0x1_0000 && start < end;
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            false
+        }
+    }
+
     pub fn new(range: Range<PhysAddr>) -> Self {
         Self { range }
     }
@@ -34,6 +48,48 @@ impl SafeIORegion {
         if offset + core::mem::size_of::<T>() > self.size() {
             return Err(());
         }
+        if self.is_port_io() {
+            #[cfg(target_arch = "x86_64")]
+            {
+                let port = (self.range.start.as_usize() + offset) as u16;
+                let sz = core::mem::size_of::<T>();
+                let mut out = core::mem::MaybeUninit::<T>::uninit();
+                match sz {
+                    1 => {
+                        let val = unsafe { x86::io::inb(port) };
+                        unsafe {
+                            core::ptr::copy_nonoverlapping(
+                                &val as *const u8,
+                                out.as_mut_ptr() as *mut u8,
+                                1,
+                            );
+                        }
+                    }
+                    2 => {
+                        let val = unsafe { x86::io::inw(port) };
+                        unsafe {
+                            core::ptr::copy_nonoverlapping(
+                                &val as *const u16 as *const u8,
+                                out.as_mut_ptr() as *mut u8,
+                                2,
+                            );
+                        }
+                    }
+                    4 => {
+                        let val = unsafe { x86::io::inl(port) };
+                        unsafe {
+                            core::ptr::copy_nonoverlapping(
+                                &val as *const u32 as *const u8,
+                                out.as_mut_ptr() as *mut u8,
+                                4,
+                            );
+                        }
+                    }
+                    _ => return Err(()),
+                }
+                return Ok(unsafe { out.assume_init() });
+            }
+        }
         let start = self.range.start.as_usize();
         let ptr = (start + offset) as *const T;
         unsafe { Ok(ptr.read_volatile()) }
@@ -42,6 +98,44 @@ impl SafeIORegion {
     pub fn write_at<T: Copy>(&self, offset: usize, value: T) -> Result<(), ()> {
         if offset + core::mem::size_of::<T>() > self.size() {
             return Err(());
+        }
+        if self.is_port_io() {
+            #[cfg(target_arch = "x86_64")]
+            {
+                let port = (self.range.start.as_usize() + offset) as u16;
+                let sz = core::mem::size_of::<T>();
+                match sz {
+                    1 => unsafe {
+                        let mut raw = 0u8;
+                        core::ptr::copy_nonoverlapping(
+                            &value as *const T as *const u8,
+                            &mut raw as *mut u8,
+                            1,
+                        );
+                        x86::io::outb(port, raw);
+                    },
+                    2 => unsafe {
+                        let mut raw = 0u16;
+                        core::ptr::copy_nonoverlapping(
+                            &value as *const T as *const u8,
+                            &mut raw as *mut u16 as *mut u8,
+                            2,
+                        );
+                        x86::io::outw(port, raw);
+                    },
+                    4 => unsafe {
+                        let mut raw = 0u32;
+                        core::ptr::copy_nonoverlapping(
+                            &value as *const T as *const u8,
+                            &mut raw as *mut u32 as *mut u8,
+                            4,
+                        );
+                        x86::io::outl(port, raw);
+                    },
+                    _ => return Err(()),
+                }
+                return Ok(());
+            }
         }
         let start = self.range.start.as_usize();
         let ptr = (start + offset) as *mut T;

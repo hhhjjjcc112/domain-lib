@@ -199,8 +199,10 @@ impl<V: DomainVmOps> DomainLoader<V> {
         self.load_program(&elf)?;
         self.relocate_dyn(&elf)?;
         // update text section permission
-        let text_pages = (self.text_section.end - self.text_section.start) / FRAME_SIZE;
-        V::set_memory_x(self.text_section.start, text_pages)?;
+        if self.text_section.end > self.text_section.start {
+            let text_pages = (self.text_section.end - self.text_section.start) / FRAME_SIZE;
+            V::set_memory_x(self.text_section.start, text_pages)?;
+        }
         // log::error!(
         //     "set_memory_x range: {:#x}-{:#x}",
         //     self.text_section.start,

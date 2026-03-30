@@ -3,6 +3,10 @@ name = "arch"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+percpu_cpu_id = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

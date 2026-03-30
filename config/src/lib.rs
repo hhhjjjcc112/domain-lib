@@ -55,9 +55,13 @@ pub const STACK_SIZE: usize = 1024 * 64;
 pub const STACK_SIZE_BITS: usize = 16;
 
 /// 可配置的启动cpu数量
-pub const CPU_NUM: usize = 2;
+pub const CPU_NUM: usize = 1;
 
+#[cfg(target_arch = "riscv64")]
 const HEAP_SIZE: usize = 0x400_0000;
+// x86_64 下域镜像更大，提升内核堆避免早期 OOM。
+#[cfg(target_arch = "x86_64")]
+const HEAP_SIZE: usize = 0x1000_0000;
 pub const KERNEL_HEAP_SIZE: usize = HEAP_SIZE;
 
 pub const TRAMPOLINE: usize = usize::MAX - 2 * FRAME_SIZE + 1;

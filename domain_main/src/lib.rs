@@ -22,12 +22,17 @@ fn panic_impl() -> TokenStream {
     quote!(
         #[panic_handler]
         fn panic(info: &PanicInfo) -> ! {
-            basic::println_color!(31, "{:?}", info);
-            basic::backtrace(domain_id());
-            #[cfg(feature = "rust-unwind")]
+            #[cfg(target_arch = "riscv64")]
+            {
+                basic::println_color!(31, "{:?}", info);
+                basic::backtrace(domain_id());
+            }
+            #[cfg(all(target_arch = "riscv64", feature = "rust-unwind"))]
             {
                 basic::unwind_from_panic();
             }
+            #[cfg(target_arch = "x86_64")]
+            let _ = info;
             loop {}
         }
     )

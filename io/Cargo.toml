@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 memory_addr = { path = "../../base/mem/crates/memory_addr" }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+x86 = "0.52"

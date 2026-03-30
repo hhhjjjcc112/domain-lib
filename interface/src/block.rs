@@ -1,16 +1,14 @@
-use core::ops::Range;
-
 use downcast_rs::{impl_downcast, DowncastSync};
 use gproxy::proxy;
 use shared_heap::DVec;
 
 use super::AlienResult;
-use crate::{Basic, DeviceBase};
+use crate::{Basic, DeviceBase, VirtioInitInfo};
 
-#[proxy(BlkDomainProxy,RwLock,Range<usize>)]
+#[proxy(BlkDomainProxy,RwLock,VirtioInitInfo)]
 pub trait BlkDeviceDomain: DeviceBase + Basic + DowncastSync {
     /// 初始化块设备驱动
-    fn init(&self, device_info: &Range<usize>) -> AlienResult<()>;
+    fn init(&self, device_info: &VirtioInitInfo) -> AlienResult<()>;
     /// 读取指定块的数据并返回填充后的缓冲区
     fn read_block(&self, block: u32, data: DVec<u8>) -> AlienResult<DVec<u8>>;
     /// 写入指定块的数据，返回写入字节数

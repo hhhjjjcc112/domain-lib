@@ -19,6 +19,7 @@ mod syscall;
 mod task;
 mod uart;
 mod vfs;
+mod virtio_init;
 
 extern crate alloc;
 
@@ -70,6 +71,7 @@ pub use syscall::*;
 pub use task::*;
 pub use uart::*;
 pub use vfs::*;
+pub use virtio_init::*;
 
 #[derive(Clone, Debug)]
 pub enum DomainType {

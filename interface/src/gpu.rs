@@ -5,12 +5,12 @@ use gproxy::proxy;
 use shared_heap::DVec;
 
 use super::AlienResult;
-use crate::{Basic, DeviceBase};
+use crate::{Basic, DeviceBase, VirtioInitInfo};
 
-#[proxy(GpuDomainProxy,RwLock,Range<usize>)]
+#[proxy(GpuDomainProxy,RwLock,VirtioInitInfo)]
 pub trait GpuDomain: DeviceBase + Basic + DowncastSync {
     /// 初始化 GPU 设备域
-    fn init(&self, device_info: &Range<usize>) -> AlienResult<()>;
+    fn init(&self, device_info: &VirtioInitInfo) -> AlienResult<()>;
     /// 刷新 GPU 缓冲/提交命令
     fn flush(&self) -> AlienResult<()>;
     /// 在 GPU 缓冲区 `offset` 位置填充数据，返回写入字节数
