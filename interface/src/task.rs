@@ -65,6 +65,14 @@ pub trait TaskDomain: Basic + DowncastSync {
     ) -> AlienResult<isize>;
     /// 设置线程 ID 存放地址
     fn do_set_tid_address(&self, tidptr: usize) -> AlienResult<isize>;
+    /// 设置当前任务的 FS TLS 基址
+    fn do_set_fs_base(&self, fs_base: usize) -> AlienResult<()>;
+    /// 获取当前任务的 FS TLS 基址
+    fn do_get_fs_base(&self) -> AlienResult<usize>;
+    /// 设置当前任务的用户 GS 基址
+    fn do_set_gs_base(&self, gs_base: usize) -> AlienResult<()>;
+    /// 获取当前任务的用户 GS 基址
+    fn do_get_gs_base(&self) -> AlienResult<usize>;
     /// 内存映射（mmap）
     fn do_mmap(
         &self,

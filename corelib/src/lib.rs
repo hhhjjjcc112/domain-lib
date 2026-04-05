@@ -246,18 +246,18 @@ mod core_impl {
     }
 
     #[inline(always)]
-    #[cfg(target_arch = "x86_64")]
-    fn current_tid_from_thread_pointer() -> Option<usize> {
-        // x86-64 在该路径下不通过线程指针推导 tid。
-        None
-    }
-    #[inline(always)]
+    #[cfg(target_arch = "riscv64")]
     pub fn current_tid() -> AlienResult<Option<usize>> {
-        // CORE_FUNC
-        //     .get_must()
-        //     .task_op(TaskOperation::Current)
-        //     .map(|res| res.current_tid())
         Ok(current_tid_from_thread_pointer())
+    }
+
+    #[inline(always)]
+    #[cfg(target_arch = "x86_64")]
+    pub fn current_tid() -> AlienResult<Option<usize>> {
+        CORE_FUNC
+            .get_must()
+            .task_op(TaskOperation::Current)
+            .map(|res| res.current_tid())
     }
     /// return kstack top
     pub fn add_one_task(task_meta: TaskMeta) -> AlienResult<usize> {
