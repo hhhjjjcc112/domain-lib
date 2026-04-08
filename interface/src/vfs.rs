@@ -2,7 +2,7 @@ use downcast_rs::{impl_downcast, DowncastSync};
 use gproxy::proxy;
 use pconst::{epoll::EpollEvent, io::SeekFrom};
 use shared_heap::{DBox, DVec};
-use vfscore::utils::{VfsFileStat, VfsNodeType, VfsPollEvents};
+use vfscore::utils::{VfsFileStat, VfsFsStat, VfsNodeType, VfsPollEvents};
 
 use super::AlienResult;
 use crate::{Basic, SocketID};
@@ -51,6 +51,11 @@ pub trait VfsDomain: Basic + DowncastSync {
         inode: InodeID,
         attr: DBox<VfsFileStat>,
     ) -> AlienResult<DBox<VfsFileStat>>;
+    fn vfs_statfs(
+        &self,
+        inode: InodeID,
+        fs_stat: DBox<VfsFsStat>,
+    ) -> AlienResult<DBox<VfsFsStat>>;
     fn vfs_read_at(
         &self,
         inode: InodeID,
@@ -96,6 +101,31 @@ pub trait VfsDomain: Basic + DowncastSync {
         path_len: usize,
         flag: u32,
     ) -> AlienResult<()>;
+    fn vfs_linkat(
+        &self,
+        old_root: InodeID,
+        old_path: &DVec<u8>,
+        old_len: usize,
+        new_root: InodeID,
+        new_path: &DVec<u8>,
+        new_len: usize,
+        flags: u32,
+    ) -> AlienResult<()>;
+    fn vfs_symlinkat(
+        &self,
+        target: &DVec<u8>,
+        target_len: usize,
+        new_root: InodeID,
+        new_path: &DVec<u8>,
+        new_len: usize,
+    ) -> AlienResult<()>;
+    fn vfs_readlinkat(
+        &self,
+        root: InodeID,
+        path: &DVec<u8>,
+        path_len: usize,
+        buf: DVec<u8>,
+    ) -> AlienResult<(DVec<u8>, usize)>;
     fn do_fcntl(&self, inode: InodeID, cmd: usize, args: usize) -> AlienResult<isize>;
     fn do_pipe2(&self, flags: usize) -> AlienResult<(InodeID, InodeID)>;
     /// 创建 socket 并返回对应的 inode id
