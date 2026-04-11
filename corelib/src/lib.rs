@@ -20,8 +20,6 @@ pub mod constants {
     pub use pconst::*;
 
     use crate::AlienError;
-
-    pub const AT_FDCWD: isize = -100isize;
     #[derive(Copy, Clone, Debug, Eq, PartialOrd, PartialEq, Hash, Ord)]
     pub struct DeviceId {
         major: u32,
