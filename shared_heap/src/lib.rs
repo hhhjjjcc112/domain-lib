@@ -150,9 +150,14 @@ static SHARED_HEAP: Once<&'static dyn SharedHeapAlloc> = Once::new();
 
 static CRATE_DOMAIN_ID: Once<u64> = Once::new();
 
+/// 提前缓存 domain_id，便于 very early panic 诊断。
+pub fn init_early_domain_id(domain_id: u64) {
+    CRATE_DOMAIN_ID.call_once(|| domain_id);
+}
+
 pub fn init(allocator: &'static dyn SharedHeapAlloc, domain_id: u64) {
     SHARED_HEAP.call_once(|| allocator);
-    CRATE_DOMAIN_ID.call_once(|| domain_id);
+    init_early_domain_id(domain_id);
 }
 
 pub fn share_heap_alloc(
@@ -170,4 +175,14 @@ pub(crate) fn share_heap_dealloc(ptr: *mut u8) {
 #[inline]
 pub fn domain_id() -> u64 {
     unsafe { *CRATE_DOMAIN_ID.get_unchecked() }
+}
+
+#[inline]
+pub fn try_domain_id() -> Option<u64> {
+    CRATE_DOMAIN_ID.get().copied()
+}
+
+#[inline]
+pub fn is_initialized() -> bool {
+    SHARED_HEAP.get().is_some() && CRATE_DOMAIN_ID.get().is_some()
 }

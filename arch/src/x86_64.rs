@@ -2,19 +2,15 @@
 //!
 //! 提供 CPU 相关基础操作，命名保持 x86 语义。
 use core::arch::x86_64::_rdtsc;
-use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 use raw_cpuid::CpuId;
 use x86_64::{
     instructions::{interrupts, hlt},
     registers::{control, rflags},
 };
 
-#[cfg(feature = "percpu_cpu_id")]
 #[percpu::def_percpu]
 static CPU_ID: usize = 0;
-
-#[cfg(not(feature = "percpu_cpu_id"))]
-static CPU_ID: AtomicUsize = AtomicUsize::new(0);
 
 
 #[inline(always)]
@@ -34,48 +30,22 @@ pub fn cpu_id_early() -> usize {
 
 #[inline(always)]
 pub fn cpu_id() -> usize {
-    #[cfg(feature = "percpu_cpu_id")]
-    {
-        CPU_ID.read_current()
-    }
-    #[cfg(not(feature = "percpu_cpu_id"))]
-    {
-    let id = CPU_ID.load(Ordering::Relaxed);
-    if id == 0 {
-        cpu_id_from_cpuid()
-    } else {
-        id
-    }
-    }
+    CPU_ID.read_current()
 }
 
 /// 初始化BSP的percpu，并写入当前CPU ID。
 ///
 /// 需在 clear_bss() 之后调用。
 pub fn init_percpu_primary(cpu_id: usize) {
-    #[cfg(feature = "percpu_cpu_id")]
-    {
-        percpu::init_in_place().unwrap();
-        percpu::init_percpu_reg(cpu_id);
-        CPU_ID.write_current(cpu_id);
-    }
-    #[cfg(not(feature = "percpu_cpu_id"))]
-    {
-    CPU_ID.store(cpu_id, Ordering::Relaxed);
-    }
+    percpu::init_in_place().unwrap();
+    percpu::init_percpu_reg(cpu_id);
+    CPU_ID.write_current(cpu_id);
 }
 
 /// 初始化从核percpu寄存器，并写入当前CPU ID。
 pub fn init_percpu_secondary(cpu_id: usize) {
-    #[cfg(feature = "percpu_cpu_id")]
-    {
-        percpu::init_percpu_reg(cpu_id);
-        CPU_ID.write_current(cpu_id);
-    }
-    #[cfg(not(feature = "percpu_cpu_id"))]
-    {
-    CPU_ID.store(cpu_id, Ordering::Relaxed);
-    }
+    percpu::init_percpu_reg(cpu_id);
+    CPU_ID.write_current(cpu_id);
 }
 
 // ==================== 特权级 ====================

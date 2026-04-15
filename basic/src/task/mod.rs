@@ -47,8 +47,8 @@ pub struct TrapFrame {
     k_sp: usize,
     /// 陷阱处理入口地址
     trap_handler: usize,
-    /// CPU 编号
-    cpu_id: usize,
+    /// 内核 percpu 基址
+    kernel_percpu: usize,
     /// S 态状态（统一 ProcessorStatus 类型）
     pub sstatus: ProcessorStatus,
     /// 浮点状态
@@ -74,7 +74,7 @@ impl TrapFrame {
             k_satp,
             k_sp,
             trap_handler,
-            cpu_id: 0,
+            kernel_percpu: 0,
             sstatus,
             fg: [0; 2],
         };
@@ -102,7 +102,7 @@ impl TrapFrame {
         self.x[2] = val.as_usize();
     }
 
-    pub fn update_tp(&mut self, val: VirtAddr) {
+    pub fn update_tls(&mut self, val: VirtAddr) {
         self.x[4] = val.as_usize();
     }
 
@@ -232,10 +232,9 @@ impl TrapFrame {
         self.rsp = val.as_usize();
     }
 
-    pub fn update_tp(&mut self, val: VirtAddr) {
-        // x86-64 用 fs/gs 承载 TLS，不使用通用寄存器。
-        // 当前先临时写入 r15 占位。
-        self.r15 = val.as_usize();
+    pub fn update_tls(&mut self, val: VirtAddr) {
+        // x86-64 TLS 通过 FS/GS base 维护，这里不再写入通用寄存器占位。
+        let _ = val;
     }
 
     pub fn update_result(&mut self, val: usize) {

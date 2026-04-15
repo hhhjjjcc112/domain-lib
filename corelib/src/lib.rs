@@ -119,6 +119,7 @@ mod core_impl {
     use crate::CoreFunction;
 
     static CORE_FUNC: Once<&'static dyn CoreFunction> = Once::new();
+    static EARLY_CORE_FUNC: Once<&'static dyn CoreFunction> = Once::new();
 
     unsafe extern "C" {
         fn sbss();
@@ -134,9 +135,38 @@ mod core_impl {
         }
     }
 
+    /// 提前缓存 syscall，便于 very early panic 仍可打印。
+    pub fn init_early(syscall: &'static dyn CoreFunction) {
+        EARLY_CORE_FUNC.call_once(|| syscall);
+    }
+
     pub fn init(syscall: &'static dyn CoreFunction) {
+        init_early(syscall);
         clear_bss();
         CORE_FUNC.call_once(|| syscall);
+    }
+
+    #[inline]
+    pub fn is_initialized() -> bool {
+        CORE_FUNC.get().is_some()
+    }
+
+    pub fn try_write_console(s: &str) -> bool {
+        if let Some(sys) = CORE_FUNC.get().copied().or_else(|| EARLY_CORE_FUNC.get().copied()) {
+            sys.sys_write_console(s);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn try_backtrace(domain_id: u64) -> bool {
+        if let Some(sys) = CORE_FUNC.get().copied().or_else(|| EARLY_CORE_FUNC.get().copied()) {
+            sys.sys_backtrace(domain_id);
+            true
+        } else {
+            false
+        }
     }
 
     pub fn alloc_raw_pages(n: usize, domain_id: u64) -> *mut u8 {
@@ -226,32 +256,8 @@ mod core_impl {
     }
 
     #[inline(always)]
-    #[cfg(target_arch = "riscv64")]
-    fn current_tid_from_thread_pointer() -> Option<usize> {
-        let mut tp: usize;
-        unsafe {
-            core::arch::asm!(
-                "mv {}, tp",
-                out(reg) tp,
-            )
-        }
-        tp >>= 32;
-        if tp == 0 {
-            None
-        } else {
-            Some(tp)
-        }
-    }
-
-    #[inline(always)]
-    #[cfg(target_arch = "riscv64")]
     pub fn current_tid() -> AlienResult<Option<usize>> {
-        Ok(current_tid_from_thread_pointer())
-    }
-
-    #[inline(always)]
-    #[cfg(target_arch = "x86_64")]
-    pub fn current_tid() -> AlienResult<Option<usize>> {
+        // 当前 tid 统一由任务域查询，避免占用 tp 作为线程标识。
         CORE_FUNC
             .get_must()
             .task_op(TaskOperation::Current)

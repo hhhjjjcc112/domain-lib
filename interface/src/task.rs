@@ -37,6 +37,10 @@ pub trait TaskDomain: Basic + DowncastSync {
     fn current_pid(&self) -> AlienResult<usize>;
     /// 获取当前线程/进程的父 pid
     fn current_ppid(&self) -> AlienResult<usize>;
+    /// 获取当前线程/进程组 ID
+    fn current_pgid(&self) -> AlienResult<usize>;
+    /// 获取当前线程/进程会话 ID
+    fn current_sid(&self) -> AlienResult<usize>;
     /// 设置或查询程序 break（sbrk/brk）
     fn do_brk(&self, addr: usize) -> AlienResult<isize>;
     /// 创建进程/线程（clone）
@@ -73,6 +77,14 @@ pub trait TaskDomain: Basic + DowncastSync {
     fn do_set_gs_base(&self, gs_base: usize) -> AlienResult<()>;
     /// 获取当前任务的用户 GS 基址
     fn do_get_gs_base(&self) -> AlienResult<usize>;
+    /// 读取指定进程的进程组 ID
+    fn do_get_pgid(&self, pid: usize) -> AlienResult<usize>;
+    /// 读取指定进程的会话 ID
+    fn do_get_sid(&self, pid: usize) -> AlienResult<usize>;
+    /// 设置当前任务的进程组 ID
+    fn do_set_pgid(&self, pid: usize, pgid: usize) -> AlienResult<isize>;
+    /// 创建新会话
+    fn do_set_sid(&self) -> AlienResult<isize>;
     /// 内存映射（mmap）
     fn do_mmap(
         &self,

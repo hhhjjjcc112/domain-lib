@@ -9,7 +9,17 @@ use core::{
 
 // CPU ID 接口
 
-/// 获取当前 CPU 编号（统一接口）
+/// 获取当前 CPU 编号（统一接口）。
+///
+/// x86_64 域镜像以可迁移/可重定位为目标，避免依赖域内 percpu 基址。
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+pub fn cpu_id() -> usize {
+    arch::cpu_id_early()
+}
+
+/// 获取当前 CPU 编号（统一接口）。
+#[cfg(target_arch = "riscv64")]
 pub use arch::cpu_id;
 
 // Per-CPU 数据结构
@@ -111,4 +121,3 @@ pub fn write_barrier() {
 pub fn compiler_barrier() {
     core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 }
-

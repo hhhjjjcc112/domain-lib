@@ -10,19 +10,28 @@ use core::sync::atomic::{AtomicU64, Ordering};
 pub use regs::*;
 use riscv::register::satp;
 
+#[percpu::def_percpu]
+static CPU_ID: usize = 0;
+
 // ==================== CPU 标识 ====================
 
 /// 获取当前 CPU ID。
 #[inline(always)]
 pub fn cpu_id() -> usize {
-    let mut id: usize;
-    unsafe {
-        asm!(
-        "mv {},tp", out(reg)id,
-        );
-    }
-    // tp 低 32 位保存 CPU id。
-    id as u32 as usize
+    CPU_ID.read_current()
+}
+
+/// 初始化 BSP 的 percpu 基址。
+pub fn init_percpu_primary(cpu_id: usize) {
+    percpu::init_in_place().unwrap();
+    percpu::init_percpu_reg(cpu_id);
+    CPU_ID.write_current(cpu_id);
+}
+
+/// 初始化从核的 percpu 基址。
+pub fn init_percpu_secondary(cpu_id: usize) {
+    percpu::init_percpu_reg(cpu_id);
+    CPU_ID.write_current(cpu_id);
 }
 
 // ==================== 中断控制 ====================

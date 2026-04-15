@@ -13,6 +13,7 @@ percpu_cpu_id = []
 
 [target.'cfg(target_arch = "riscv64")'.dependencies]
 riscv = "0.11"
+percpu = "0.3"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 raw-cpuid = "11"

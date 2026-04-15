@@ -22,17 +22,17 @@ fn panic_impl() -> TokenStream {
     quote!(
         #[panic_handler]
         fn panic(info: &PanicInfo) -> ! {
-            #[cfg(target_arch = "riscv64")]
-            {
-                basic::println_color!(31, "{:?}", info);
-                basic::backtrace(domain_id());
+            let msg = alloc::format!("\x1b[31m{:?}\x1b[0m\n", info);
+            let _ = basic::try_write_console(&msg);
+            if let Some(domain_id) = shared_heap::try_domain_id() {
+                let _ = basic::try_backtrace(domain_id);
             }
-            #[cfg(all(target_arch = "riscv64", feature = "rust-unwind"))]
+            #[cfg(feature = "rust-unwind")]
             {
-                basic::unwind_from_panic();
+                if basic::is_initialized() && shared_heap::is_initialized() {
+                    basic::unwind_from_panic();
+                }
             }
-            #[cfg(target_arch = "x86_64")]
-            let _ = info;
             loop {}
         }
     )

@@ -93,13 +93,13 @@ impl Default for FpSimdState {
 #[derive(Debug, Clone, Copy, Default)]
 #[repr(C, align(16))]
 pub struct TaskContext {
-    /// 内核栈顶（用于更新 TSS.rsp0）
+    /// 调度入口使用的内核栈顶
     kstack_top: usize,
     /// 栈指针（rsp）
     rsp: usize,
     /// TLS 对应 FS 基址
     fs_base: usize,
-    /// 用户态 GS 基址（写 IA32_KERNEL_GS_BASE）
+    /// 用户态 GS 基址缓存（写 IA32_KERNEL_GS_BASE）
     gs_base: usize,
     /// 任务级 FP/SIMD 状态（fxsave64/fxrstor64 格式，16 字节对齐）
     fp_simd: FpSimdState,

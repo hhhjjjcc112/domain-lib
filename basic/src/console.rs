@@ -5,20 +5,15 @@ use ksync::Mutex;
 #[inline(always)]
 #[cfg(target_arch = "riscv64")]
 pub fn current_cpu_prefix_id() -> usize {
-    let mut id: usize;
-    unsafe {
-        core::arch::asm!(
-            "mv {},tp",
-            out(reg) id,
-        );
-    }
-    id as u32 as usize
+    // tp 仅保留给用户 TLS，内核统一走 percpu CPU ID。
+    arch::cpu_id()
 }
 
 #[inline(always)]
 #[cfg(target_arch = "x86_64")]
 pub fn current_cpu_prefix_id() -> usize {
-    arch::cpu_id()
+    // 域内不依赖 percpu 基址，打印前缀统一走 CPUID 快路。
+    arch::cpu_id_early()
 }
 
 #[macro_export]

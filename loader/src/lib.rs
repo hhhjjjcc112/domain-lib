@@ -88,6 +88,14 @@ impl<V: DomainVmOps> DomainLoader<V> {
         self.entry_point
     }
 
+    pub fn virt_start(&self) -> usize {
+        self.virt_start
+    }
+
+    pub fn entry_addr(&self) -> usize {
+        self.entry_point
+    }
+
     pub fn call<T: ?Sized, C: 'static + ?Sized, F>(
         &self,
         id: u64,
@@ -157,15 +165,14 @@ impl<V: DomainVmOps> DomainLoader<V> {
         Ok(())
     }
     fn relocate_dyn(&self, elf: &ElfFile) -> Result<()> {
-        if let Ok(res) = relocate_dyn(elf, self.virt_start) {
-            trace!("Relocate_dyn {} entries", res.len());
-            res.into_iter().for_each(|kv| {
-                trace!("relocate: {:#x} -> {:#x}", kv.0, kv.1);
-                let addr = kv.0;
-                unsafe { (addr as *mut usize).write(kv.1) }
-            });
-            trace!("Relocate_dyn done");
-        }
+        let res = relocate_dyn(elf, self.virt_start)?;
+        trace!("Relocate_dyn {} entries", res.len());
+        res.into_iter().for_each(|kv| {
+            trace!("relocate: {:#x} -> {:#x}", kv.0, kv.1);
+            let addr = kv.0;
+            unsafe { (addr as *mut usize).write(kv.1) }
+        });
+        trace!("Relocate_dyn done");
         Ok(())
     }
 
@@ -194,6 +201,8 @@ impl<V: DomainVmOps> DomainLoader<V> {
         //     region_start,
         //     region_start + end_paddr.as_usize()
         // );
+        // 先清零整段映像，保证 .bss 与段间空洞符合 ELF 约定。
+        module_area.as_mut_slice().fill(0);
         self.virt_start = region_start;
         self.module_area = Some(module_area);
         self.load_program(&elf)?;
@@ -241,7 +250,16 @@ fn relocate_dyn(elf: &ElfFile, region_start: usize) -> Result<Vec<(usize, usize)
                 let addr = region_start + entry.get_offset() as usize;
                 res.push((addr, value))
             }
-            t => unimplemented!("unknown type: {}", t),
+            t => {
+                // 遇到不支持的重定位时返回错误，避免直接 panic。
+                error!(
+                    "unsupported relocation type {} (offset={:#x}, addend={:#x})",
+                    t,
+                    entry.get_offset(),
+                    entry.get_addend()
+                );
+                return Err("unsupported relocation type");
+            }
         }
     }
     Ok(res)
