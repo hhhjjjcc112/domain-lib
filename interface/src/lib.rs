@@ -1,4 +1,6 @@
 #![no_std]
+#[cfg(target_arch = "x86_64")]
+mod apic;
 mod block;
 mod buf_input;
 mod buf_uart;
@@ -10,7 +12,7 @@ mod input_device;
 mod logger;
 mod net;
 mod net_device;
-mod apic;
+#[cfg(target_arch = "riscv64")]
 mod plic;
 mod rtc;
 mod scheduler;
@@ -51,6 +53,8 @@ pub trait DeviceBase: Send + Sync {
     fn handle_irq(&self) -> AlienResult<()>;
 }
 
+#[cfg(target_arch = "x86_64")]
+pub use apic::*;
 pub use block::*;
 pub use buf_input::*;
 pub use buf_uart::*;
@@ -62,7 +66,7 @@ pub use input_device::*;
 pub use logger::*;
 pub use net::*;
 pub use net_device::*;
-pub use apic::*;
+#[cfg(target_arch = "riscv64")]
 pub use plic::*;
 pub use rtc::*;
 pub use scheduler::*;
@@ -83,7 +87,9 @@ pub enum DomainType {
     InputDomain(Arc<dyn InputDomain>),
     VfsDomain(Arc<dyn VfsDomain>),
     UartDomain(Arc<dyn UartDomain>),
+    #[cfg(target_arch = "riscv64")]
     PLICDomain(Arc<dyn PLICDomain>),
+    #[cfg(target_arch = "x86_64")]
     APICDomain(Arc<dyn APICDomain>),
     TaskDomain(Arc<dyn TaskDomain>),
     SysCallDomain(Arc<dyn SysCallDomain>),
@@ -109,7 +115,9 @@ impl DomainType {
             DomainType::InputDomain(_) => DomainTypeRaw::InputDomain,
             DomainType::VfsDomain(_) => DomainTypeRaw::VfsDomain,
             DomainType::UartDomain(_) => DomainTypeRaw::UartDomain,
+            #[cfg(target_arch = "riscv64")]
             DomainType::PLICDomain(_) => DomainTypeRaw::PLICDomain,
+            #[cfg(target_arch = "x86_64")]
             DomainType::APICDomain(_) => DomainTypeRaw::APICDomain,
             DomainType::TaskDomain(_) => DomainTypeRaw::TaskDomain,
             DomainType::SysCallDomain(_) => DomainTypeRaw::SysCallDomain,
@@ -136,6 +144,7 @@ pub enum DomainTypeRaw {
     InputDomain = 6,
     VfsDomain = 7,
     UartDomain = 8,
+    #[cfg(target_arch = "riscv64")]
     PLICDomain = 9,
     TaskDomain = 10,
     SysCallDomain = 11,
@@ -148,6 +157,7 @@ pub enum DomainTypeRaw {
     SchedulerDomain = 18,
     LogDomain = 19,
     NetDomain = 20,
+    #[cfg(target_arch = "x86_64")]
     APICDomain = 21,
 }
 
@@ -162,6 +172,7 @@ impl Display for DomainTypeRaw {
             DomainTypeRaw::InputDomain => write!(f, "InputDomain"),
             DomainTypeRaw::VfsDomain => write!(f, "VfsDomain"),
             DomainTypeRaw::UartDomain => write!(f, "UartDomain"),
+            #[cfg(target_arch = "riscv64")]
             DomainTypeRaw::PLICDomain => write!(f, "PLICDomain"),
             DomainTypeRaw::TaskDomain => write!(f, "TaskDomain"),
             DomainTypeRaw::SysCallDomain => write!(f, "SysCallDomain"),
@@ -174,6 +185,7 @@ impl Display for DomainTypeRaw {
             DomainTypeRaw::SchedulerDomain => write!(f, "SchedulerDomain"),
             DomainTypeRaw::LogDomain => write!(f, "LogDomain"),
             DomainTypeRaw::NetDomain => write!(f, "NetDomain"),
+            #[cfg(target_arch = "x86_64")]
             DomainTypeRaw::APICDomain => write!(f, "APICDomain"),
         }
     }
@@ -192,6 +204,7 @@ impl TryFrom<u8> for DomainTypeRaw {
             6 => Ok(DomainTypeRaw::InputDomain),
             7 => Ok(DomainTypeRaw::VfsDomain),
             8 => Ok(DomainTypeRaw::UartDomain),
+            #[cfg(target_arch = "riscv64")]
             9 => Ok(DomainTypeRaw::PLICDomain),
             10 => Ok(DomainTypeRaw::TaskDomain),
             11 => Ok(DomainTypeRaw::SysCallDomain),
@@ -204,6 +217,7 @@ impl TryFrom<u8> for DomainTypeRaw {
             18 => Ok(DomainTypeRaw::SchedulerDomain),
             19 => Ok(DomainTypeRaw::LogDomain),
             20 => Ok(DomainTypeRaw::NetDomain),
+            #[cfg(target_arch = "x86_64")]
             21 => Ok(DomainTypeRaw::APICDomain),
             _ => Err(()),
         }
@@ -242,7 +256,9 @@ impl DomainType {
             DomainType::InputDomain(d) => d.domain_id(),
             DomainType::VfsDomain(d) => d.domain_id(),
             DomainType::UartDomain(d) => d.domain_id(),
+            #[cfg(target_arch = "riscv64")]
             DomainType::PLICDomain(d) => d.domain_id(),
+            #[cfg(target_arch = "x86_64")]
             DomainType::APICDomain(d) => d.domain_id(),
             DomainType::TaskDomain(d) => d.domain_id(),
             DomainType::SysCallDomain(d) => d.domain_id(),

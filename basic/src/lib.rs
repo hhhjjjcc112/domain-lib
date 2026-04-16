@@ -20,12 +20,16 @@ use alloc::{boxed::Box, format, sync::Arc};
 
 use corelib::domain_info::DomainInfo;
 pub use corelib::{
-    add_one_task, backtrace, blk_crash_trick, checkout_shared_data, constants, create_domain,
-    current_tid, exit_now, get_domain, get_task_priority, is_task_exit, kernel_page_table_token,
-    is_initialized, register_domain, reload_domain, remove_task, set_task_priority, trap_from_user,
-    trap_to_user, try_backtrace, try_write_console, update_domain, vaddr_to_paddr_in_kernel,
-    wait_now, wake_up_wait_task, write_console, yield_now,
-    AlienError, AlienResult, CoreFunction,
+    AlienError, AlienResult, CoreFunction, add_one_task, backtrace, blk_crash_trick,
+    checkout_shared_data, constants, create_domain, current_tid, exit_now, get_domain,
+    get_task_priority, is_initialized, is_task_exit, kernel_page_table_token, register_domain,
+    reload_domain, remove_task, set_task_priority, trap_from_user, trap_to_user, try_backtrace,
+    try_write_console, update_domain, vaddr_to_paddr_in_kernel, wait_now, wake_up_wait_task,
+    write_console, yield_now,
+};
+#[cfg(target_arch = "x86_64")]
+pub use corelib::{
+    current_user_fs_base, current_user_gs_base, set_current_user_fs_base, set_current_user_gs_base,
 };
 pub use domain_main::domain_main;
 use ksync::Mutex;

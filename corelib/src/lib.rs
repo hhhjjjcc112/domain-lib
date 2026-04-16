@@ -152,7 +152,11 @@ mod core_impl {
     }
 
     pub fn try_write_console(s: &str) -> bool {
-        if let Some(sys) = CORE_FUNC.get().copied().or_else(|| EARLY_CORE_FUNC.get().copied()) {
+        if let Some(sys) = CORE_FUNC
+            .get()
+            .copied()
+            .or_else(|| EARLY_CORE_FUNC.get().copied())
+        {
             sys.sys_write_console(s);
             true
         } else {
@@ -161,7 +165,11 @@ mod core_impl {
     }
 
     pub fn try_backtrace(domain_id: u64) -> bool {
-        if let Some(sys) = CORE_FUNC.get().copied().or_else(|| EARLY_CORE_FUNC.get().copied()) {
+        if let Some(sys) = CORE_FUNC
+            .get()
+            .copied()
+            .or_else(|| EARLY_CORE_FUNC.get().copied())
+        {
             sys.sys_backtrace(domain_id);
             true
         } else {
@@ -315,6 +323,38 @@ mod core_impl {
             .get_must()
             .task_op(TaskOperation::GetPriority)
             .map(|res| res.priority())
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn set_current_user_fs_base(fs_base: usize) -> AlienResult<()> {
+        CORE_FUNC
+            .get_must()
+            .task_op(TaskOperation::SetUserFsBase(fs_base))?;
+        Ok(())
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn current_user_fs_base() -> AlienResult<usize> {
+        CORE_FUNC
+            .get_must()
+            .task_op(TaskOperation::GetUserFsBase)
+            .map(|res| res.fs_base())
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn set_current_user_gs_base(gs_base: usize) -> AlienResult<()> {
+        CORE_FUNC
+            .get_must()
+            .task_op(TaskOperation::SetUserGsBase(gs_base))?;
+        Ok(())
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn current_user_gs_base() -> AlienResult<usize> {
+        CORE_FUNC
+            .get_must()
+            .task_op(TaskOperation::GetUserGsBase)
+            .map(|res| res.gs_base())
     }
 
     pub fn checkout_shared_data() -> AlienResult<()> {

@@ -1,12 +1,12 @@
 use core::ops::Range;
 
-use downcast_rs::{impl_downcast, DowncastSync};
+use downcast_rs::{DowncastSync, impl_downcast};
 use gproxy::proxy;
 use pod::Pod;
 use shared_heap::{DBox, DVec};
 
 use super::AlienResult;
-use crate::{vfs::InodeID, Basic};
+use crate::{Basic, vfs::InodeID};
 #[proxy(TaskDomainProxy, RwLock)]
 pub trait TaskDomain: Basic + DowncastSync {
     /// 初始化任务域
@@ -69,12 +69,16 @@ pub trait TaskDomain: Basic + DowncastSync {
     ) -> AlienResult<isize>;
     /// 设置线程 ID 存放地址
     fn do_set_tid_address(&self, tidptr: usize) -> AlienResult<isize>;
+    #[cfg(target_arch = "x86_64")]
     /// 设置当前任务的 FS TLS 基址
     fn do_set_fs_base(&self, fs_base: usize) -> AlienResult<()>;
+    #[cfg(target_arch = "x86_64")]
     /// 获取当前任务的 FS TLS 基址
     fn do_get_fs_base(&self) -> AlienResult<usize>;
+    #[cfg(target_arch = "x86_64")]
     /// 设置当前任务的用户 GS 基址
     fn do_set_gs_base(&self, gs_base: usize) -> AlienResult<()>;
+    #[cfg(target_arch = "x86_64")]
     /// 获取当前任务的用户 GS 基址
     fn do_get_gs_base(&self) -> AlienResult<usize>;
     /// 读取指定进程的进程组 ID
