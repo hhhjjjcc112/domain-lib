@@ -27,6 +27,8 @@ pub trait TaskDomain: Basic + DowncastSync {
     fn fs_info(&self) -> AlienResult<(InodeID, InodeID)>;
     /// 设置当前工作目录（cwd）为指定 inode
     fn set_cwd(&self, inode: InodeID) -> AlienResult<()>;
+    /// 读取并更新当前任务的 umask
+    fn do_umask(&self, mask: u32) -> AlienResult<u32>;
     /// 将数据拷贝到用户地址空间
     fn copy_to_user(&self, dst: usize, buf: &[u8]) -> AlienResult<()>;
     /// 从用户地址空间拷贝数据到内核

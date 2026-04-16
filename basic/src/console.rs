@@ -2,18 +2,9 @@ use core::fmt::{Arguments, Write};
 
 use ksync::Mutex;
 
-#[inline(always)]
-#[cfg(target_arch = "riscv64")]
 pub fn current_cpu_prefix_id() -> usize {
-    // tp 仅保留给用户 TLS，内核统一走 percpu CPU ID。
-    arch::cpu_id()
-}
-
-#[inline(always)]
-#[cfg(target_arch = "x86_64")]
-pub fn current_cpu_prefix_id() -> usize {
-    // 域内不依赖 percpu 基址，打印前缀统一走 CPUID 快路。
-    arch::cpu_id_early()
+    // 打印前缀统一走内核查询，避免 domain 自己猜测当前 CPU。
+    corelib::current_cpu_id()
 }
 
 #[macro_export]

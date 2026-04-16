@@ -8,7 +8,7 @@ edition = "2024"
 [dependencies]
 config = { path = "../config" }
 arch = { path = "../arch" }
-ksync = { path = "../ksync" }
+ksync = { path = "../ksync", features = ["core_cpu_id"] }
 domain_main = { path = "../domain_main" }
 corelib = { path = "../corelib", features = ["core_impl"] }
 task_meta = { path = "../task_meta" }

@@ -4,7 +4,7 @@ use core::{
     ops::Deref,
 };
 
-use arch::{cpu_id, interrupt_disable, interrupt_enable, is_interrupt_enable};
+use arch::{interrupt_disable, interrupt_enable, is_interrupt_enable};
 use config::CPU_NUM;
 use kernel_sync::{EmptyLockAction, LockAction, TicketMutexGuard};
 
@@ -55,8 +55,22 @@ const DEFAULT_CPU: SafeRefCell<Cpu> = SafeRefCell::new(Cpu::new());
 
 static CPUS: [SafeRefCell<Cpu>; CPU_NUM] = [DEFAULT_CPU; CPU_NUM];
 
+#[inline(always)]
+fn current_cpu_id() -> usize {
+    #[cfg(feature = "core_cpu_id")]
+    {
+        // 域镜像统一向内核查询，避免把 percpu 符号带进 PIE 链接。
+        corelib::current_cpu_id()
+    }
+
+    #[cfg(not(feature = "core_cpu_id"))]
+    {
+        arch::cpu_id()
+    }
+}
+
 fn mycpu() -> RefMut<'static, Cpu> {
-    CPUS[cpu_id()].0.borrow_mut()
+    CPUS[current_cpu_id()].0.borrow_mut()
 }
 
 pub(crate) fn push_off() {

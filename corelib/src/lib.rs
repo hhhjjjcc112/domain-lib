@@ -76,6 +76,7 @@ pub trait CoreFunction: Send + Sync {
     fn sys_alloc_pages(&self, domain_id: u64, n: usize) -> *mut u8;
     fn sys_free_pages(&self, domain_id: u64, p: *mut u8, n: usize);
     fn sys_write_console(&self, s: &str);
+    fn sys_current_cpu_id(&self) -> usize;
     fn sys_backtrace(&self, domain_id: u64);
     fn sys_trampoline_addr(&self) -> usize;
     fn sys_kernel_page_table_token(&self) -> usize;
@@ -187,6 +188,21 @@ mod core_impl {
 
     pub fn write_console(s: &str) {
         CORE_FUNC.get_must().sys_write_console(s);
+    }
+
+    #[inline]
+    pub fn try_current_cpu_id() -> Option<usize> {
+        CORE_FUNC
+            .get()
+            .copied()
+            .or_else(|| EARLY_CORE_FUNC.get().copied())
+            .map(|sys| sys.sys_current_cpu_id())
+    }
+
+    #[inline]
+    pub fn current_cpu_id() -> usize {
+        // 域内统一向内核查询当前 CPU，避免直接依赖域镜像里的 percpu 符号。
+        try_current_cpu_id().unwrap_or(0)
     }
 
     pub fn backtrace(domain_id: u64) {

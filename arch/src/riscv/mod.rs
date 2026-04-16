@@ -214,4 +214,3 @@ pub fn disallow_access_user_memory() {
 pub fn wfi() {
     riscv::asm::wfi();
 }
-

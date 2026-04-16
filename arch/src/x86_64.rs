@@ -12,7 +12,6 @@ use x86_64::{
 #[percpu::def_percpu]
 static CPU_ID: usize = 0;
 
-
 #[inline(always)]
 fn cpu_id_from_cpuid() -> usize {
     let cpuid = CpuId::new();
