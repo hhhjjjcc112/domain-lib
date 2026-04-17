@@ -1,3 +1,8 @@
+use x86_64::{
+    VirtAddr,
+    registers::model_specific::{FsBase, KernelGsBase},
+};
+
 /// x86_64 FXSAVE/FXRSTOR 状态块。
 #[repr(C, align(16))]
 #[derive(Debug, Clone, Copy)]
@@ -124,6 +129,18 @@ impl TaskContext {
     #[inline]
     pub fn set_gs_base(&mut self, gs_base: usize) {
         self.gs_base = gs_base;
+    }
+
+    #[inline]
+    pub fn save_fsgs(&mut self) {
+        self.fs_base = FsBase::read().as_u64() as usize;
+        self.gs_base = KernelGsBase::read().as_u64() as usize;
+    }
+
+    #[inline]
+    pub fn restore_fsgs(&self) {
+        FsBase::write(VirtAddr::new(self.fs_base as u64));
+        KernelGsBase::write(VirtAddr::new(self.gs_base as u64));
     }
 
     #[inline]

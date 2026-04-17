@@ -149,6 +149,7 @@ pub struct TrampolineArg<'a> {
     pub trait_name: &'a Ident,
     pub proxy_name: &'a Ident,
     pub func_name: Ident,
+    pub attr: Vec<Attribute>,
     pub input_argv: Vec<Ident>,
     pub fn_args: Vec<FnArg>,
     pub arg_domain_change: Vec<TokenStream>,

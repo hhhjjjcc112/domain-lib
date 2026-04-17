@@ -259,6 +259,7 @@ fn impl_func_code_rwlock(
                 trait_name,
                 proxy_name,
                 func_name,
+                attr: attr.clone(),
                 input_argv,
                 fn_args,
                 arg_domain_change,
@@ -288,6 +289,7 @@ fn gen_trampoline_rwlock(arg: TrampolineArg) -> (TokenStream, TokenStream) {
         arg_domain_change,
         out_put,
         no_check,
+        attr,
     } = arg;
 
     let info = gen_trampoline_info(&arg_domain_change, no_check);
@@ -295,6 +297,7 @@ fn gen_trampoline_rwlock(arg: TrampolineArg) -> (TokenStream, TokenStream) {
     let (inner_call_code, __ident_no_lock, __ident_with_lock) = impl_inner_code(
         has_recovery,
         (&func_name, trait_name),
+        &attr,
         &fn_args,
         &input_argv,
         out_put,
@@ -319,6 +322,7 @@ fn gen_trampoline_rwlock(arg: TrampolineArg) -> (TokenStream, TokenStream) {
 fn impl_inner_code(
     _has_recover: bool,
     func_trait_name: (&Ident, &Ident),
+    attr: &[syn::Attribute],
     fn_argv: &Vec<FnArg>,
     input_argv: &Vec<Ident>,
     output: ReturnType,
@@ -358,10 +362,12 @@ fn impl_inner_code(
     );
 
     let inner_call = quote!(
+        #(#attr)*
         #[inline(always)]
         fn #__ident(&self, #(#fn_argv),*)#output{
             #ident_call
         }
+        #(#attr)*
         #[inline(always)]
         fn #__ident_no_lock(&self, #(#fn_argv),*)#output{
             self.counter.inc();
@@ -369,6 +375,7 @@ fn impl_inner_code(
             self.counter.dec();
             res
         }
+        #(#attr)*
         #[cold]
         #[inline(always)]
         fn #__ident_with_lock(&self, #(#fn_argv),*)#output{
