@@ -134,12 +134,14 @@ impl TaskContext {
     #[inline]
     pub fn save_fsgs(&mut self) {
         self.fs_base = FsBase::read().as_u64() as usize;
+        // 因为有swapgs，用户态gs在内核态被换到KernelGsBase里了，所以这里读KernelGsBase。
         self.gs_base = KernelGsBase::read().as_u64() as usize;
     }
 
     #[inline]
     pub fn restore_fsgs(&self) {
         FsBase::write(VirtAddr::new(self.fs_base as u64));
+        // 因为有swapgs，用户态gs在内核态被换到KernelGsBase里了
         KernelGsBase::write(VirtAddr::new(self.gs_base as u64));
     }
 

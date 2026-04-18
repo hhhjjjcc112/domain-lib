@@ -7,11 +7,10 @@ edition = "2024"
 
 [features]
 default = []
-core_cpu_id = ["dep:corelib"]
 
 [dependencies]
 config = { path = "../config" }
 arch = { path = "../arch" }
-corelib = { path = "../corelib", optional = true }
+corelib = { path = "../corelib", features = ["core_impl"] }
 kernel-sync = { path = "../../utils/kernel-sync" }
 spin = "0"

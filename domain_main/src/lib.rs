@@ -23,15 +23,11 @@ fn panic_impl() -> TokenStream {
         #[panic_handler]
         fn panic(info: &PanicInfo) -> ! {
             let msg = alloc::format!("\x1b[31m{:?}\x1b[0m\n", info);
-            let _ = basic::try_write_console(&msg);
-            if let Some(domain_id) = shared_heap::try_domain_id() {
-                let _ = basic::try_backtrace(domain_id);
-            }
+            basic::write_console(&msg);
+            basic::backtrace(shared_heap::domain_id());
             #[cfg(feature = "rust-unwind")]
             {
-                if basic::is_initialized() && shared_heap::is_initialized() {
-                    basic::unwind_from_panic();
-                }
+                basic::unwind_from_panic();
             }
             loop {}
         }

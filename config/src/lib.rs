@@ -55,7 +55,7 @@ pub const STACK_SIZE: usize = 1024 * 64;
 pub const STACK_SIZE_BITS: usize = 16;
 
 /// 可配置的启动cpu数量
-pub const CPU_NUM: usize = 2;
+pub const CPU_NUM: usize = 4;
 
 #[cfg(target_arch = "riscv64")]
 const HEAP_SIZE: usize = 0x400_0000;

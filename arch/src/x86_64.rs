@@ -9,43 +9,6 @@ use x86_64::{
     registers::{control, rflags},
 };
 
-#[percpu::def_percpu]
-static CPU_ID: usize = 0;
-
-#[inline(always)]
-fn cpu_id_from_cpuid() -> usize {
-    let cpuid = CpuId::new();
-    cpuid
-        .get_feature_info()
-        .map(|info| info.initial_local_apic_id() as usize)
-        .unwrap_or(0)
-}
-
-/// 早期读取当前CPU ID（始终走CPUID，避免依赖percpu状态）。
-#[inline(always)]
-pub fn cpu_id_early() -> usize {
-    cpu_id_from_cpuid()
-}
-
-#[inline(always)]
-pub fn cpu_id() -> usize {
-    CPU_ID.read_current()
-}
-
-/// 初始化BSP的percpu，并写入当前CPU ID。
-///
-/// 需在 clear_bss() 之后调用。
-pub fn init_percpu_primary(cpu_id: usize) {
-    percpu::init_in_place().unwrap();
-    percpu::init_percpu_reg(cpu_id);
-    CPU_ID.write_current(cpu_id);
-}
-
-/// 初始化从核percpu寄存器，并写入当前CPU ID。
-pub fn init_percpu_secondary(cpu_id: usize) {
-    percpu::init_percpu_reg(cpu_id);
-    CPU_ID.write_current(cpu_id);
-}
 
 // ==================== 特权级 ====================
 

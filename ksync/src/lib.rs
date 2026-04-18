@@ -57,16 +57,7 @@ static CPUS: [SafeRefCell<Cpu>; CPU_NUM] = [DEFAULT_CPU; CPU_NUM];
 
 #[inline(always)]
 fn current_cpu_id() -> usize {
-    #[cfg(feature = "core_cpu_id")]
-    {
-        // 域镜像统一向内核查询，避免把 percpu 符号带进 PIE 链接。
-        corelib::current_cpu_id()
-    }
-
-    #[cfg(not(feature = "core_cpu_id"))]
-    {
-        arch::cpu_id()
-    }
+    corelib::current_cpu_id()
 }
 
 fn mycpu() -> RefMut<'static, Cpu> {

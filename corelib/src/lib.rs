@@ -120,7 +120,6 @@ mod core_impl {
     use crate::CoreFunction;
 
     static CORE_FUNC: Once<&'static dyn CoreFunction> = Once::new();
-    static EARLY_CORE_FUNC: Once<&'static dyn CoreFunction> = Once::new();
 
     unsafe extern "C" {
         fn sbss();
@@ -136,46 +135,9 @@ mod core_impl {
         }
     }
 
-    /// 提前缓存 syscall，便于 very early panic 仍可打印。
-    pub fn init_early(syscall: &'static dyn CoreFunction) {
-        EARLY_CORE_FUNC.call_once(|| syscall);
-    }
-
     pub fn init(syscall: &'static dyn CoreFunction) {
-        init_early(syscall);
         clear_bss();
         CORE_FUNC.call_once(|| syscall);
-    }
-
-    #[inline]
-    pub fn is_initialized() -> bool {
-        CORE_FUNC.get().is_some()
-    }
-
-    pub fn try_write_console(s: &str) -> bool {
-        if let Some(sys) = CORE_FUNC
-            .get()
-            .copied()
-            .or_else(|| EARLY_CORE_FUNC.get().copied())
-        {
-            sys.sys_write_console(s);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn try_backtrace(domain_id: u64) -> bool {
-        if let Some(sys) = CORE_FUNC
-            .get()
-            .copied()
-            .or_else(|| EARLY_CORE_FUNC.get().copied())
-        {
-            sys.sys_backtrace(domain_id);
-            true
-        } else {
-            false
-        }
     }
 
     pub fn alloc_raw_pages(n: usize, domain_id: u64) -> *mut u8 {
@@ -190,19 +152,9 @@ mod core_impl {
         CORE_FUNC.get_must().sys_write_console(s);
     }
 
-    #[inline]
-    pub fn try_current_cpu_id() -> Option<usize> {
-        CORE_FUNC
-            .get()
-            .copied()
-            .or_else(|| EARLY_CORE_FUNC.get().copied())
-            .map(|sys| sys.sys_current_cpu_id())
-    }
-
-    #[inline]
     pub fn current_cpu_id() -> usize {
         // 域内统一向内核查询当前 CPU，避免直接依赖域镜像里的 percpu 符号。
-        try_current_cpu_id().unwrap_or(0)
+        CORE_FUNC.get_must().sys_current_cpu_id()
     }
 
     pub fn backtrace(domain_id: u64) {
@@ -279,7 +231,6 @@ mod core_impl {
         CORE_FUNC.get_must().vaddr_to_paddr_in_kernel(vaddr)
     }
 
-    #[inline(always)]
     pub fn current_tid() -> AlienResult<Option<usize>> {
         // 当前 tid 统一由任务域查询，避免占用 tp 作为线程标识。
         CORE_FUNC
@@ -287,6 +238,14 @@ mod core_impl {
             .task_op(TaskOperation::Current)
             .map(|res| res.current_tid())
     }
+
+    pub fn current_cpus_allowed() -> AlienResult<usize> {
+        CORE_FUNC
+            .get_must()
+            .task_op(TaskOperation::GetCpusAllowed)
+            .map(|res| res.cpus_allowed())
+    }
+
     /// return kstack top
     pub fn add_one_task(task_meta: TaskMeta) -> AlienResult<usize> {
         CORE_FUNC
