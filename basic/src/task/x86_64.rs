@@ -93,6 +93,10 @@ impl TrapFrame {
         VirtAddr::from(self.k_sp)
     }
 
+    pub fn kernel_page_table_token(&self) -> usize {
+        self.k_cr3
+    }
+
     pub fn update_user_sp(&mut self, val: VirtAddr) {
         self.rsp = val.as_usize();
     }

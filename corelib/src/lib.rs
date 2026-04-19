@@ -239,13 +239,6 @@ mod core_impl {
             .map(|res| res.current_tid())
     }
 
-    pub fn current_cpus_allowed() -> AlienResult<usize> {
-        CORE_FUNC
-            .get_must()
-            .task_op(TaskOperation::GetCpusAllowed)
-            .map(|res| res.cpus_allowed())
-    }
-
     /// return kstack top
     pub fn add_one_task(task_meta: TaskMeta) -> AlienResult<usize> {
         CORE_FUNC

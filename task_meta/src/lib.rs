@@ -128,7 +128,6 @@ pub enum TaskOperation {
     Exit,
     Remove(usize),
     Current,
-    GetCpusAllowed,
     ExitOver(usize),
     SetPriority(i8),
     GetPriority,
@@ -145,7 +144,6 @@ pub enum TaskOperation {
 #[derive(Debug, Copy, Clone)]
 pub enum OperationResult {
     Current(Option<usize>),
-    CpusAllowed(usize),
     KstackTop(usize),
     Null,
     ExitOver(bool),
@@ -168,13 +166,6 @@ impl OperationResult {
         match self {
             OperationResult::KstackTop(top) => *top,
             _ => panic!("OperationResult is not KstackTop"),
-        }
-    }
-
-    pub fn cpus_allowed(&self) -> usize {
-        match self {
-            OperationResult::CpusAllowed(cpus_allowed) => *cpus_allowed,
-            _ => panic!("OperationResult is not CpusAllowed"),
         }
     }
 
