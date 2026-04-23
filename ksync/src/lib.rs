@@ -13,6 +13,11 @@ pub type TicketMutex<T> = kernel_sync::ticket::TicketMutex<T, EmptyLockAction>;
 pub type RwLock<T> = kernel_sync::RwLock<T>;
 pub type Mutex<T> = TicketMutex<T>;
 pub type MutexGuard<'a, T> = TicketMutexGuard<'a, T>;
+pub type SpinMutexNoIrq<T> = kernel_sync::spin::SpinMutex<T, NoIrqLockAction>;
+pub type TicketMutexNoIrq<T> = kernel_sync::ticket::TicketMutex<T, NoIrqLockAction>;
+pub type RwLockNoIrq<T> = kernel_sync::rwlock::RwLock<T, NoIrqLockAction>;
+pub type MutexNoIrq<T> = TicketMutexNoIrq<T>;
+pub type MutexNoIrqGuard<'a, T> = kernel_sync::ticket::TicketMutexGuard<'a, T, NoIrqLockAction>;
 
 #[derive(Debug, Default, Clone, Copy)]
 #[repr(align(64))]
@@ -87,8 +92,8 @@ pub(crate) fn pop_off() {
     }
 }
 
-pub struct KernelLockAction;
-impl LockAction for KernelLockAction {
+pub struct NoIrqLockAction;
+impl LockAction for NoIrqLockAction {
     fn before_lock() {
         push_off();
     }
