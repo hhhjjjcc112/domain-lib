@@ -145,6 +145,8 @@ pub trait TaskDomain: Basic + DowncastSync {
         uaddr2: usize,
         val3: u32,
     ) -> AlienResult<isize>;
+    /// 刷新 vDSO 共享时间快照
+    fn vdso_update_time_snapshot(&self) -> AlienResult<()>;
 }
 
 #[derive(Debug, Default)]
