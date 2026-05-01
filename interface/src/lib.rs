@@ -1,6 +1,7 @@
 #![no_std]
 #[cfg(target_arch = "x86_64")]
-mod apic;
+mod local_apic;
+mod io_apic;
 mod block;
 mod buf_input;
 mod buf_uart;
@@ -54,7 +55,8 @@ pub trait DeviceBase: Send + Sync {
 }
 
 #[cfg(target_arch = "x86_64")]
-pub use apic::*;
+pub use local_apic::*;
+pub use io_apic::*;
 pub use block::*;
 pub use buf_input::*;
 pub use buf_uart::*;
@@ -90,7 +92,9 @@ pub enum DomainType {
     #[cfg(target_arch = "riscv64")]
     PLICDomain(Arc<dyn PLICDomain>),
     #[cfg(target_arch = "x86_64")]
-    APICDomain(Arc<dyn APICDomain>),
+    LocalAPICDomain(Arc<dyn LocalAPICDomain>),
+    #[cfg(target_arch = "x86_64")]
+    IoAPICDomain(Arc<dyn IoAPICDomain>),
     TaskDomain(Arc<dyn TaskDomain>),
     SysCallDomain(Arc<dyn SysCallDomain>),
     ShadowBlockDomain(Arc<dyn ShadowBlockDomain>),
@@ -118,7 +122,9 @@ impl DomainType {
             #[cfg(target_arch = "riscv64")]
             DomainType::PLICDomain(_) => DomainTypeRaw::PLICDomain,
             #[cfg(target_arch = "x86_64")]
-            DomainType::APICDomain(_) => DomainTypeRaw::APICDomain,
+            DomainType::LocalAPICDomain(_) => DomainTypeRaw::LocalAPICDomain,
+            #[cfg(target_arch = "x86_64")]
+            DomainType::IoAPICDomain(_) => DomainTypeRaw::IoAPICDomain,
             DomainType::TaskDomain(_) => DomainTypeRaw::TaskDomain,
             DomainType::SysCallDomain(_) => DomainTypeRaw::SysCallDomain,
             DomainType::ShadowBlockDomain(_) => DomainTypeRaw::ShadowBlockDomain,
@@ -158,7 +164,9 @@ pub enum DomainTypeRaw {
     LogDomain = 19,
     NetDomain = 20,
     #[cfg(target_arch = "x86_64")]
-    APICDomain = 21,
+    LocalAPICDomain = 22,
+    #[cfg(target_arch = "x86_64")]
+    IoAPICDomain = 23,
 }
 
 impl Display for DomainTypeRaw {
@@ -186,7 +194,9 @@ impl Display for DomainTypeRaw {
             DomainTypeRaw::LogDomain => write!(f, "LogDomain"),
             DomainTypeRaw::NetDomain => write!(f, "NetDomain"),
             #[cfg(target_arch = "x86_64")]
-            DomainTypeRaw::APICDomain => write!(f, "APICDomain"),
+            DomainTypeRaw::LocalAPICDomain => write!(f, "LocalAPICDomain"),
+            #[cfg(target_arch = "x86_64")]
+            DomainTypeRaw::IoAPICDomain => write!(f, "IoAPICDomain"),
         }
     }
 }
@@ -218,7 +228,9 @@ impl TryFrom<u8> for DomainTypeRaw {
             19 => Ok(DomainTypeRaw::LogDomain),
             20 => Ok(DomainTypeRaw::NetDomain),
             #[cfg(target_arch = "x86_64")]
-            21 => Ok(DomainTypeRaw::APICDomain),
+            22 => Ok(DomainTypeRaw::LocalAPICDomain),
+            #[cfg(target_arch = "x86_64")]
+            23 => Ok(DomainTypeRaw::IoAPICDomain),
             _ => Err(()),
         }
     }
@@ -259,7 +271,9 @@ impl DomainType {
             #[cfg(target_arch = "riscv64")]
             DomainType::PLICDomain(d) => d.domain_id(),
             #[cfg(target_arch = "x86_64")]
-            DomainType::APICDomain(d) => d.domain_id(),
+            DomainType::LocalAPICDomain(d) => d.domain_id(),
+            #[cfg(target_arch = "x86_64")]
+            DomainType::IoAPICDomain(d) => d.domain_id(),
             DomainType::TaskDomain(d) => d.domain_id(),
             DomainType::SysCallDomain(d) => d.domain_id(),
             DomainType::ShadowBlockDomain(d) => d.domain_id(),
