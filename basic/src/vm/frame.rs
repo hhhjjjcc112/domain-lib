@@ -48,6 +48,16 @@ impl FrameTracker {
             dealloc: false,
         })
     }
+    /// 从物理地址范围创建 FrameTracker，且拥有这些物理页的所有权（会在析构时释放）
+    pub fn from_phy_range_owned(r: Range<usize>) -> Self {
+        assert_eq!(r.start % FRAME_SIZE, 0);
+        assert_eq!(r.end % FRAME_SIZE, 0);
+        Self(BasicFrame {
+            ptr: r.start,
+            page_count: (r.end - r.start) / FRAME_SIZE,
+            dealloc: true,
+        })
+    }
 }
 
 impl Drop for FrameTracker {

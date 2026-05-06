@@ -101,6 +101,7 @@ pub trait CoreFunction: Send + Sync {
     ) -> AlienResult<()>;
     fn sys_reload_domain(&self, domain_name: &str) -> AlienResult<()>;
     fn vaddr_to_paddr_in_kernel(&self, vaddr: usize) -> AlienResult<usize>;
+    fn vdso_map_user(&self, vspace: usize) -> AlienResult<usize>;
     fn task_op(&self, op: TaskOperation) -> AlienResult<OperationResult>;
     fn checkout_shared_data(&self) -> AlienResult<()>;
 
@@ -229,6 +230,10 @@ mod core_impl {
     }
     pub fn vaddr_to_paddr_in_kernel(vaddr: usize) -> AlienResult<usize> {
         CORE_FUNC.get_must().vaddr_to_paddr_in_kernel(vaddr)
+    }
+
+    pub fn vdso_map_user(vspace: usize) -> AlienResult<usize> {
+        CORE_FUNC.get_must().vdso_map_user(vspace)
     }
 
     pub fn current_tid() -> AlienResult<Option<usize>> {

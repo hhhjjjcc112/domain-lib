@@ -39,6 +39,8 @@ pub trait TaskDomain: Basic + DowncastSync {
     fn current_pid(&self) -> AlienResult<usize>;
     /// 获取当前线程/进程的父 pid
     fn current_ppid(&self) -> AlienResult<usize>;
+    /// 将给定虚地址在当前任务地址空间中翻译为物理地址（供内核访问）
+    fn vaddr_to_paddr(&self, vaddr: usize) -> AlienResult<usize>;
     /// 获取当前线程/进程组 ID
     fn current_pgid(&self) -> AlienResult<usize>;
     /// 获取当前线程/进程会话 ID
@@ -135,6 +137,20 @@ pub trait TaskDomain: Basic + DowncastSync {
     fn do_mprotect(&self, addr: usize, len: usize, prot: u32) -> AlienResult<isize>;
     /// 处理加载阶段的缺页异常
     fn do_load_page_fault(&self, addr: usize) -> AlienResult<()>;
+    /// 仅为 vDSO 在用户地址空间预留虚拟区间（不分配物理页，不建立映射）
+    fn vdso_reserve_user_vaddr(&self, len: usize, prot: u32, flags: u32) -> AlienResult<usize>;
+    /// 将给定物理页映射到用户地址空间的预留区间
+    /// 
+    /// `page_descs` 的每个元素为 (paddr, transfer_flag)：
+    /// - transfer_flag=true: task 将拥有这些页，进程退出时负责释放
+    /// - transfer_flag=false: 这些页由 kernel 保留（共享页），task 只建立映射不释放
+    fn vdso_map_user_pages(
+        &self,
+        vaddr: usize,
+        len: usize,
+        prot: u32,
+        page_descs: DVec<(usize,bool)>,
+    ) -> AlienResult<()>;
     /// futex 操作
     fn do_futex(
         &self,
@@ -145,8 +161,6 @@ pub trait TaskDomain: Basic + DowncastSync {
         uaddr2: usize,
         val3: u32,
     ) -> AlienResult<isize>;
-    /// 刷新 vDSO 共享时间快照
-    fn vdso_update_time_snapshot(&self) -> AlienResult<()>;
 }
 
 #[derive(Debug, Default)]
