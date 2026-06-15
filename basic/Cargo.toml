@@ -23,13 +23,13 @@ pconst = { path = "../../utils/pconst", features = [
     "special_error",
 ] }
 spin = "0"
-unwinding = { version = "0.2.8", default-features = false, features = [
+unwinding = { version = "0.2", default-features = false, features = [
     "unwinder",
     "fde-gnu-eh-frame-hdr",
     "panic",
     "personality",
 ] }
-getrandom = "0.3.1"
+getrandom = "0.3"
 
 # Architecture-specific dependencies
 [target.'cfg(target_arch = "riscv64")'.dependencies]

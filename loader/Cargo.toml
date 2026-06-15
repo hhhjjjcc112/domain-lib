@@ -8,6 +8,6 @@ shared_heap = { path = "../shared_heap" }
 storage = { path = "../storage" }
 
 xmas-elf = "0.10"
-bitflags = "2.6.0"
+bitflags = "2"
 memory_addr = { path = "../../base/mem/crates/memory_addr" }
 log = "0"

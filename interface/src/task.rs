@@ -141,15 +141,15 @@ pub trait TaskDomain: Basic + DowncastSync {
     fn vdso_reserve_user_vaddr(&self, len: usize, prot: u32, flags: u32) -> AlienResult<usize>;
     /// 将给定物理页映射到用户地址空间的预留区间
     /// 
-    /// `page_descs` 的每个元素为 (paddr, transfer_flag)：
-    /// - transfer_flag=true: task 将拥有这些页，进程退出时负责释放
-    /// - transfer_flag=false: 这些页由 kernel 保留（共享页），task 只建立映射不释放
+    /// - shared=true: 页面与其他地址空间共享（如代码段），task 只建立映射不释放
+    /// - shared=false: task 拥有这些页面，进程退出时负责释放
     fn vdso_map_user_pages(
         &self,
         vaddr: usize,
         len: usize,
         prot: u32,
-        page_descs: DVec<(usize,bool)>,
+        paddrs: DVec<usize>,
+        shared: bool,
     ) -> AlienResult<()>;
     /// futex 操作
     fn do_futex(
